@@ -49,7 +49,13 @@ class Server:
             print("Error, attempted to send to uninitialized client.")
             sys.exit(1)
 
-        self.client.send(message.encode())
+        message = message.encode()
+        message_length = len(message)
+        bytes_sent = 0
+
+        # continues sending until the entire message has been sent
+        while bytes_sent < message_length:
+            bytes_sent += self.client.send(message.encode())
 
     def recv(self, len):
         return self.client.recv(len).decode
