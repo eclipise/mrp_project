@@ -33,12 +33,15 @@ class Client:
             sys.exit(1)
 
     # sends a message for robot movement.
-    # speed and turn are percents in range [-100, 100], 
-    # duration is milliseconds in range [0, 4,294,967,295]
-    def send_movement(self, speed, turn, duration):
-        # packs the three parameters into a 6-byte binary string
-        # ">bbI" = big-endian, signed byte, signed byte, unsigned 4-byte int
-        message = struct.pack(">bbI", speed, turn, duration)
+    # 
+    # speed, turn: percents in range [-100, 100]
+    # duration: milliseconds in range [0, 4,294,967,295]
+    # controlA: int in range [0, 255], set 1 to terminate connection
+    # controlB: int in range [0, 255], unused (network messages are best in powers of 2)
+    def send_movement(self, speed=0, turn=0, duration=20, controlA=0, controlB=0):
+        # packs the five parameters into an 8-byte binary string
+        # ">bbIBB" = big-endian, signed byte, signed byte, unsigned 4-byte int, unsigned byte, unsigned byte
+        message = struct.pack(">bbIbb", speed, turn, duration, controlA, controlB)
         
         self.client.send(message)
             

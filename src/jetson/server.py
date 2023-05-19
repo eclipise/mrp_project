@@ -50,9 +50,17 @@ class Server:
 
         self.client.send(message.encode())
 
+    # receives flags for overall program control (i.e. exiting)
+    def recv_control(self):
+        # receives 1 byte
+        message = self.client.recv(1)
+
+        
+
+    # receives movement instructions
     def recv_movement(self):
         # receives 6 bytes
-        message = self.client.recv(6)
+        message = self.client.recv(8)
 
         # unpacks the bytes according to the format string:
         # ">bbI" = big-endian, signed byte, signed byte, unsigned 4-byte int

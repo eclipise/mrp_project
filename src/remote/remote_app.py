@@ -13,12 +13,28 @@ def main():
     
     client.connect(host_ip, host_port)
 
-    par1 = -100
-    par2 = 100
-    par3 = 5000
+    while True:
+        speed = int(input("Speed %[-100, 100]: "))
+        if speed > 100 or speed < -100:
+            print("Error: speed must be between -100 and 100.") 
+            continue
+        
+        turn = int(input("Turn %[-100, 100]: "))
+        if not 100 > turn > -100:
+            print("Error: turn must be between -100 and 100.") 
+            continue
 
-    client.send_movement(par1, par2, par3)
+        duration = int(input("Duration (ms): "))
+        if duration > 4294967295:
+            print("Error: duration must be less than 4,294,967,295.") 
+            continue
 
+        client.send_movement(speed, turn, duration)
+
+        if input("Continue [y/n]? ") == 'n':
+            break
+    
+    client.send_movement(optionA=1)
     client.close()
 
 if __name__ == "__main__":
