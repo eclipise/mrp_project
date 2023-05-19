@@ -1,18 +1,17 @@
 # contains a server implementation for the Jetson Nano
 
 import socket
+import struct
 import sys
 
-# initializes server on instantiation, must then be opened with open_server method
+# initializes server socket on instantiation,
+# must then be opened with open_server method
 class Server:
     def __init__(self, port):
-        self.port = port,
-        self.server = self.init_server(),
-        self.client, 
-        self.client_addr
-
-    def get_host_ip(self):
-        return socket.gethostbyname(socket.gethostname())
+        self.port = port
+        self.server = self.init_server()
+        self.client = None
+        self.client_addr = None
 
     def get_client_addr(self):
         return self.client_addr
@@ -22,43 +21,45 @@ class Server:
             # initializes a network socket
             print("Creating socket...")
             host = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            print("Success.")
+            print("success.")
             
             # binds the socket to a port
             print(f"Binding socket to port {self.port}...")
             host.bind(('', self.port))
-            print("Success.")
+            print("success.")
         except socket.error as err:
-            print("Error:", err)
+            print("error:", err)
             sys.exit(1)
+
+        return host
 
     # makes the server wait for an incoming connection
     def open_server(self):
-        host_ip = self.get_host_ip()
-
         # starts listening for incoming connections
-        print(f"Waiting for connection at {host_ip}:{self.port}...")
+        print(f"Waiting for connection...")
         self.server.listen()
         
         # waits for a connection request
         self.client, self.client_addr = self.server.accept()
-        print(f"Connected to {self.client_addr}.")
+        print(f"connected to {self.client_addr}.")
     
     def send(self, message):
         if self.client is None:
             print("Error, attempted to send to uninitialized client.")
             sys.exit(1)
 
-        message = message.encode()
-        message_length = len(message)
-        bytes_sent = 0
+        self.client.send(message.encode())
 
-        # continues sending until the entire message has been sent
-        while bytes_sent < message_length:
-            bytes_sent += self.client.send(message.encode())
+    def recv_movement(self):
+        # receives 6 bytes
+        message = self.client.recv(6)
 
-    def recv(self, len):
-        return self.client.recv(len).decode
+        # unpacks the bytes according to the format string:
+        # ">bbI" = big-endian, signed byte, signed byte, unsigned 4-byte int
+        speed, turn, duration = struct.unpack(">bbI", message)
 
-    def close_connection(self):
+        return (speed, turn, duration)
+
+    def close(self):
         self.client.close()
+        print("Connection closed.")
