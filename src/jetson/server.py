@@ -29,6 +29,7 @@ class Server:
             print("success.")
         except socket.error as err:
             print("error:", err)
+            host.close()
             sys.exit(1)
 
         return host
@@ -46,6 +47,7 @@ class Server:
     def send(self, message):
         if self.client is None:
             print("Error, attempted to send to uninitialized client.")
+            self.server.close()
             sys.exit(1)
 
         self.client.send(message.encode())
@@ -55,12 +57,13 @@ class Server:
         # receives 1 byte
         message = self.client.recv(1)
 
-        
+        # unpack produces a tuple with one element, so this returns only that element
+        return struct.unpack(">B", message)[0]
 
     # receives movement instructions
     def recv_movement(self):
         # receives 6 bytes
-        message = self.client.recv(8)
+        message = self.client.recv(6)
 
         # unpacks the bytes according to the format string:
         # ">bbI" = big-endian, signed byte, signed byte, unsigned 4-byte int

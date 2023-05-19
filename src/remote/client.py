@@ -10,8 +10,8 @@ class Client:
     def __init__(self):
         self.client = self.init_client()
 
+    # initializes a network socket
     def init_client(self):
-        # initializes a network socket
         try:
             print("Creating socket...")
             client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -22,9 +22,9 @@ class Client:
 
         return client
     
+    # connects to the host at ip:port
     def connect(self, ip, port):
         try:
-            # connects to the host at host_ip:host_port
             print(f"Connecting to {ip}:{port}...")
             self.client.connect((ip, port))
             print("connected.")
@@ -32,23 +32,28 @@ class Client:
             print("error:", err)
             sys.exit(1)
 
-    # sends a message for robot movement.
+    # Sends a single byte for overall program control (i.e. exiting)
+    # 
+    # message: int [0, 255]
+    #       0: continue
+    #       1: terminate
+    def send_control(self, message=0):
+        # packs the int to a big-endian unsigned byte
+        message = struct.pack(">B", message)
+
+        self.client.send(message)
+
+    # Sends a message for robot movement.
     # 
     # speed, turn: percents in range [-100, 100]
     # duration: milliseconds in range [0, 4,294,967,295]
-    # controlA: int in range [0, 255], set 1 to terminate connection
-    # controlB: int in range [0, 255], unused (network messages are best in powers of 2)
-    def send_movement(self, speed=0, turn=0, duration=20, controlA=0, controlB=0):
-        # packs the five parameters into an 8-byte binary string
-        # ">bbIBB" = big-endian, signed byte, signed byte, unsigned 4-byte int, unsigned byte, unsigned byte
-        message = struct.pack(">bbIbb", speed, turn, duration, controlA, controlB)
+    def send_movement(self, speed, turn, duration=20):
+        # packs the five parameters into an 6-byte binary string
+        # ">bbIBB" = big-endian, signed byte, signed byte, unsigned 4-byte int
+        message = struct.pack(">bbI", speed, turn, duration)
         
         self.client.send(message)
             
     def close(self):
         self.client.close()
         print("Connection closed.")
-
-
-
-

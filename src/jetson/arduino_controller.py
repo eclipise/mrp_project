@@ -12,10 +12,13 @@ def main():
     server = Server(port)
     server.open_server()
 
-    print(server.recv_movement())
+    while True:
+        if server.recv_control() > 0:
+            break
+
+        print(server.recv_movement())
 
     server.close()
-
 
 if __name__ == "__main__":
     main()
