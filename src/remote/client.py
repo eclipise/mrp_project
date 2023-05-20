@@ -41,7 +41,7 @@ class Client:
         # packs the int to a big-endian unsigned byte
         message = struct.pack(">B", message)
 
-        self.client.send(message)
+        self.client.sendall(message)
 
     # Sends a message for robot movement.
     # 
@@ -52,7 +52,7 @@ class Client:
         # ">bbIBB" = big-endian, signed byte, signed byte, unsigned 4-byte int
         message = struct.pack(">bbI", speed, turn, duration)
         
-        self.client.send(message)
+        self.client.sendall(message)
             
     def close(self):
         self.client.close()

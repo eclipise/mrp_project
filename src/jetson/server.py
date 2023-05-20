@@ -50,7 +50,7 @@ class Server:
             self.server.close()
             sys.exit(1)
 
-        self.client.send(message.encode())
+        self.client.sendall(message.encode())
 
     # receives flags for overall program control (i.e. exiting)
     def recv_control(self):
