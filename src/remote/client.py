@@ -37,7 +37,7 @@ class Client:
     # message: int [0, 255]
     #       0: continue
     #       1: terminate
-    def send_control(self, message=0):
+    def send_control(self, message):
         # packs the int to a big-endian unsigned byte
         message = struct.pack(">B", message)
 
@@ -47,7 +47,7 @@ class Client:
     # 
     # speed, turn: percents in range [-100, 100]
     # duration: milliseconds in range [0, 4,294,967,295]
-    def send_movement(self, speed, turn, duration=20):
+    def send_movement(self, speed, turn, duration):
         # packs the five parameters into an 6-byte binary string
         # ">bbIBB" = big-endian, signed byte, signed byte, unsigned 4-byte int
         message = struct.pack(">bbI", speed, turn, duration)
