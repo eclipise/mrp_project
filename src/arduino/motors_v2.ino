@@ -3,15 +3,13 @@
 int motorPinsLeft[6] = {5, 44, 46, 48, 50, 4};  //Pins for left motor
 int motorPinsRight[6] = {3, 45, 47, 49, 51, 2};  //Pins for right motor
 
-float maxSpeed = 2.55;  //Max bits, representing x00ff
 int maxi = 255; //Max bits, representing x00ff
 int leftSpeed, rightSpeed;
-int theSpeed, theTurn;
-int theTorque = 1.0625;  //Convertion of how many bits will result in 1rpm
+// int theTorque = 1.0625;  //Convertion of how many bits will result in 1rpm
 
-int param1;  //Speed input
-int param2;  //Turn input
-int param3;  //Time input
+int speedInput;  //Speed input
+int turnInput;  //Turn input
+int timeInput;  //Time input
 bool params_set = false;
 
 #define IR1 A1  
@@ -30,13 +28,8 @@ void setup() {
     pinMode (motorPinsRight[i], OUTPUT);
   }
 
-  
   Serial.begin(9600);  //Baud rate selected
-  
- 
-  
 }
-
 
 void getDistance(int *dis){
  
@@ -51,10 +44,11 @@ void getDistance(int *dis){
 //  Serial.println(dis2);
 }
 
-
+// speed and turn should be [-1.0, 1.0]
 void moveRobot(float theSpeed, float theTurn, int t)  { 
 
   getDistance(dis);
+  
   if(dis[0] < 20 || dis[1] < 30){
     Serial.println("STOP");
     digitalWrite(motorPinsLeft[1], 0);  //Pin 45, int1
@@ -68,10 +62,10 @@ void moveRobot(float theSpeed, float theTurn, int t)  {
     return;
   }
   
-  //Disered speed, turn and duration t
-  theSpeed *= maxSpeed;  //The per unit speed provided times the maximum bits, to see how many bits it corresponds to
-  theTurn *= maxSpeed;  //The per unit turn provided times the maximum bits, to see how many bits it corresponds to
-//  theTorque *= theSpeed;  //Math conversion of the bits to rpm for the motors
+  //Desired speed, turn and duration t
+  theSpeed *= maxi;  //The per unit speed provided times the maximum bits, to see how many bits it corresponds to
+  theTurn *= maxi;  //The per unit turn provided times the maximum bits, to see how many bits it corresponds to
+  // theTorque *= theSpeed;  //Math conversion of the bits to rpm for the motors
 
   // Individual Speeds
   leftSpeed = int(theSpeed - theTurn);  //If my turn is positive it will turn to the left by making left motors slower and right motors faster
@@ -127,25 +121,22 @@ void moveRobot(float theSpeed, float theTurn, int t)  {
     digitalWrite(motorPinsRight[4], 0);  
     Serial.println("------------Backward Right");  
   }
-//   delay(2000);  //Time it will take in this action
-
-
    
-   delay(t);   
-   Serial.println("STOP");
-   digitalWrite(motorPinsLeft[1], 0);  //Pin 45, int1
-   digitalWrite(motorPinsLeft[2], 0);  //Pin 47, int2
-   digitalWrite(motorPinsLeft[3], 0);  //Pin 49, int4
-   digitalWrite(motorPinsLeft[4], 0);  //Pin 51, int3
-   digitalWrite(motorPinsRight[1], 0);  //Pin 44, int1
-   digitalWrite(motorPinsRight[2], 0);  //Pin 46, int2
-   digitalWrite(motorPinsRight[3], 0);  //Pin 48, int4
-   digitalWrite(motorPinsRight[4], 0);  //Pin 50, int3
+  delay(t);   
+  Serial.println("STOP");
+  digitalWrite(motorPinsLeft[1], 0);  //Pin 45, int1
+  digitalWrite(motorPinsLeft[2], 0);  //Pin 47, int2
+  digitalWrite(motorPinsLeft[3], 0);  //Pin 49, int4
+  digitalWrite(motorPinsLeft[4], 0);  //Pin 51, int3
+  digitalWrite(motorPinsRight[1], 0);  //Pin 44, int1
+  digitalWrite(motorPinsRight[2], 0);  //Pin 46, int2
+  digitalWrite(motorPinsRight[3], 0);  //Pin 48, int4
+  digitalWrite(motorPinsRight[4], 0);  //Pin 50, int3
 } 
 
 void loop() {
-
   // put your main code here, to run repeatedly:
+
   if (Serial.available() > 0) {
     // read the incoming message
     String message = Serial.readStringUntil('\n');
@@ -161,16 +152,10 @@ void loop() {
     // parse the parameters from the message
     char buffer[30];
     message.toCharArray(buffer, 30);
-    int result = sscanf(buffer, "%d %d %d", &param1, &param2, &param3);
+    int result = sscanf(buffer, "%d %d %d", &speedInput, &turnInput, &timeInput);
     Serial.print("sscanf result: ");
     Serial.println(result);
-    Serial.print("Parsed parameters: ");
-    Serial.print(param1);
-    Serial.print(" ");
-    Serial.print(param2);
-    Serial.print(" ");
-    Serial.println(param3);
-  
+
     // check for parsing errors
     if (result != 3) {
       Serial.println("Error parsing parameters");
@@ -179,79 +164,12 @@ void loop() {
     
     // print the parameters to the serial monitor
     Serial.print("Received parameters: ");
-    Serial.print(param1);
+    Serial.print(speedInput);
     Serial.print(" ");
-    Serial.print(param2);
+    Serial.print(turnInput);
     Serial.print(" ");
-    Serial.println(param3);
+    Serial.println(timeInput);
 
-  moveRobot(param1,param2,param3);
+    moveRobot(speedInput,turnInput,timeInput);
   }
-//  moveRobot(0,0,2000);               //Inputted to gradually increase speed and then decrease it
-//  moveRobot(0.2,0,5000);             //With no turn and a 2 seconds wait in each action
-//  moveRobot(0.4,0,8000);
-//  moveRobot(0.5,0,2000);
-//  moveRobot(0.6,0,2000);
-//  moveRobot(0.7,0,2000);
-//  moveRobot(0.8,0,2000);
-//  moveRobot(0.9,0,2000);
-//  moveRobot(1,0,1000);               //Max speed
-//  moveRobot(0.9,0,2000);
-//  moveRobot(0.8,0,2000);
-//  moveRobot(0.7,0,2000);
-//  moveRobot(0.6,0,2000);
-//  moveRobot(0.4,0,2000);
-//  moveRobot(0.2,0,2000);
-//  moveRobot(0,0,2000);               //Until here
-//  moveRobot(0,0.3,2000);             //The impact of a turn to the left
-//  moveRobot(0,0.5,2000);
-//  moveRobot(0,0.3,2000);
-//  moveRobot(0,0,2000);               //Until here
-//  moveRobot(0,-0.3,2000);            //The impact of a turn to the right
-//  moveRobot(0,-0.5,2000);
-//  moveRobot(0,-0.3,2000);
-
-  
 }
-
-//Testing and troubleshooting
-
-//  void moveRobot(int theSpeed)  {
-
-    
-//     // digitalWrite(motorPinsRight[4],1);
-//     // digitalWrite(motorPinsRight[3],0);
-//     // analogWrite(motorPinsRight[5], abs(theSpeed));
-//     // digitalWrite(motorPinsRight[2],0);                   // 2,  1, 0
-//     // digitalWrite(motorPinsRight[1],1);
-//     // analogWrite(motorPinsRight[0], abs(theSpeed));
-
-//     digitalWrite(motorPinsLeft[4], 1);  //Pin 6, int1
-//     digitalWrite(motorPinsLeft[3], 0);  //Pin 5, int2
-//     analogWrite(motorPinsLeft[5], abs(theSpeed));
-//     digitalWrite(motorPinsLeft[2], 1);  //Pin 6, int1
-//     digitalWrite(motorPinsLeft[1], 0);  //Pin 5, int2
-//     analogWrite(motorPinsLeft[0], abs(theSpeed));
-//     delay(2000);
-//   }
-
-
-//     // digitalWrite(motorPinsLeft[4],1);
-//     // digitalWrite(motorPinsLeft[3],0);
-//     // analogWrite(motorPinsLeft[5], abs(theSpeed));
-//     // digitalWrite(motorPinsLeft[2],1);
-//     // digitalWrite(motorPinsLeft[1],0);
-//     // analogWrite(motorPinsLeft[0], abs(theSpeed));
- 
-
-//  void loop() {
-//     // put your main code here, to run repeatedly:
-//     moveRobot(200);
-//     delay(2000);
-//     moveRobot(100);
-//     delay(2000);
-//     moveRobot(0);
-//     delay(2000);
-//     moveRobot(100);
-//     delay(2000);
-// }
