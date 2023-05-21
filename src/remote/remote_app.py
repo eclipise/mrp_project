@@ -62,7 +62,17 @@ class GUI:
                 [sg.Push(), sg.B("Disconnect", key="-disc-"), sg.Push()]]
 
         # defines a window with title, layout, and size
-        window = sg.Window(f"MRP Controller ({self.ip}:{self.port})", layout, size=(350, 600))
+        window = sg.Window(f"MRP Controller ({self.ip}:{self.port})", layout, size=(350, 500), finalize=True, use_default_focus=False)
+
+        # allows window to capture keystrokes
+        window.bind("<Key>", "+key+")
+        window.bind("<KeyRelease>", "-key-")
+
+        # variables for tracking held keys
+        w_held = False
+        a_held = False
+        d_held = False
+        s_held = False
 
         # controlled by slider on UI
         speed = INITIAL_SPEED
@@ -84,6 +94,27 @@ class GUI:
             if event in (sg.WIN_CLOSED, "-disc-"):
                 break
             
+            # event handler for keystrokes
+            # if event is key down, else if event is key up
+            if event == "+key+":
+                if window.user_bind_event.keycode == 25:
+                    w_held = True
+                elif window.user_bind_event.keycode == 38:
+                    a_held = True
+                elif window.user_bind_event.keycode == 39:
+                    d_held = True
+                elif window.user_bind_event.keycode == 40:
+                    s_held = True
+            elif event == "-key-":
+                if window.user_bind_event.keycode == 25:
+                    w_held = False
+                elif window.user_bind_event.keycode == 38:
+                    a_held = False
+                elif window.user_bind_event.keycode == 39:
+                    d_held = False
+                elif window.user_bind_event.keycode == 40:
+                    s_held = False
+                
             # event handler for changes to the movement slider
             if event == "-speed_sl-":
                 speed = int(values["-speed_sl-"])
@@ -92,25 +123,37 @@ class GUI:
             if event == "-turn_sl-":
                 turn = int(values["-turn_sl-"])
             
-            # if the window has not timed out, a button is being held
-            if event != sg.TIMEOUT_EVENT:
-                # event handler for the up arrow button
-                if event == "-f-":
+            if w_held:
+                message = (speed, 0, self.polling_rate)
+                send_message = True
+            elif a_held:
+                message = (0, turn, self.polling_rate)
+                send_message = True
+            elif d_held:
+                message = (0, -turn, self.polling_rate)
+                send_message = True
+            elif s_held:
+                message = (-speed, 0, self.polling_rate)
+                send_message = True
+            # if the window has not timed out, a GUI button is being held
+            elif event != sg.TIMEOUT_EVENT:
+                # event handler for the up arrow button and w key
+                if event == "-f-" or w_held:
                     message = (speed, 0, self.polling_rate)
                     send_message = True
                 
-                # event handler for the left arrow button
-                if event == "-l-":
+                # event handler for the left arrow button and a key
+                if event == "-l-" or a_held:
                     message = (0, turn, self.polling_rate)
                     send_message = True
                 
-                # event handler for the right arrow button
-                if event == "-r-":
+                # event handler for the right arrow button and d key
+                if event == "-r-" or d_held:
                     message = (0, -turn, self.polling_rate)
                     send_message = True
                 
-                # event handler for the down arrow button
-                if event == "-b-":
+                # event handler for the down arrow button and s key
+                if event == "-b-" or s_held:
                     message = (-speed, 0, self.polling_rate)
                     send_message = True
 
