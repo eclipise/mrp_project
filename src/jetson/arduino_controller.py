@@ -1,6 +1,7 @@
 # main program running on Jetson Nano
 
 import serial
+from time import sleep
 from server import Server
 
 def main():
@@ -16,8 +17,12 @@ def main():
         if server.recv_control() > 0:
             break
 
-        print(server.recv_movement())
-
+        message = server.recv_movement()
+        print(message)
+        
+        # wait for the duration of the instruction 
+        sleep(message[2]/1000)
+        
     server.close()
 
 if __name__ == "__main__":

@@ -2,6 +2,7 @@
 
 import PySimpleGUI as sg
 import ipaddress
+from time import sleep
 from client import Client
 
 # creates and GUI and runs communication with a server.
@@ -58,7 +59,7 @@ class GUI:
                 [sg.Push(), sg.RealtimeButton("", image_filename="resources/arrow_down.png", key="-b-"), sg.Push()],
                 [sg.Text("Speed"), sg.Slider(range=(0, 100), default_value=INITIAL_SPEED, expand_x=True, orientation="horizontal", enable_events=True, key="-speed_sl-")], 
                 [sg.Text("Turn Sharpness"), sg.Slider(range=(0, 100), default_value=INITIAL_TURN, expand_x=True, orientation="horizontal", enable_events=True, key="-turn_sl-")], 
-                [sg.Push(), sg.B("Disconnect"), sg.Push()]]
+                [sg.Push(), sg.B("Disconnect", key="-disc-"), sg.Push()]]
 
         # defines a window with title, layout, and size
         window = sg.Window(f"MRP Controller ({self.ip}:{self.port})", layout, size=(350, 600))
@@ -80,7 +81,7 @@ class GUI:
             event, values = window.read(timeout=self.polling_rate)
             
             # exits the main loop when the window is closed
-            if event == sg.WIN_CLOSED:
+            if event in (sg.WIN_CLOSED, "-disc-"):
                 break
             
             # event handler for changes to the movement slider
@@ -124,11 +125,13 @@ class GUI:
                 # tells server to accept realtime movement
                 self.client.send_control(0)
 
-
+                self.client.send_movement(message)
+                
+                # wait for the duration of the instruction before sending another
+                sleep(self.polling_rate/1000)
+                
                 send_message = False
 
-        print("exit")
-        
         window.close()
         
         # tells the server to terminate

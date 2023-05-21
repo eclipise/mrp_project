@@ -47,7 +47,9 @@ class Client:
     # 
     # speed, turn: percents in range [-100, 100]
     # duration: milliseconds in range [0, 4,294,967,295]
-    def send_movement(self, speed, turn, duration):
+    def send_movement(self, message):
+        speed, turn, duration = message
+
         # packs the five parameters into an 6-byte binary string
         # ">bbIBB" = big-endian, signed byte, signed byte, unsigned 4-byte int
         message = struct.pack(">bbI", speed, turn, duration)
