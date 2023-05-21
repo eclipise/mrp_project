@@ -1,3 +1,11 @@
+'''
++++++++++++++++++++++++++
+
+        DEPRECATED
+
++++++++++++++++++++++++++
+'''
+
 # contains the GUI code for the remote computer
 
 import PySimpleGUI as sg
