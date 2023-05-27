@@ -1,61 +1,40 @@
-# contains the client that connects to the Jetson Nano's server
+import requests
 
-import socket
-import struct
-import sys
-
-# initializes client socket on instantiation, 
-# must then connect to a server with connect method
 class Client:
-    def __init__(self):
-        self.client = self.init_client()
+    def __init__(self, host_addr: str) -> None:
+        self.host_addr = f"http://{host_addr}"
 
-    # initializes a network socket
-    def init_client(self):
+    def check_connection(self) -> tuple[bool, str]:
         try:
-            print("Creating socket...")
-            client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            print("success.")
-        except socket.error as err:
-            print("error:", err)
-            sys.exit(1)
+            return (requests.get(self.host_addr).ok, "")
+        except requests.exceptions.RequestException as e:
+            return (False, e)
 
-        return client
+    def send_movement(self, instruction: tuple[int, int, int]) -> tuple[bool, str]:
+        message = {
+            "speed": instruction[0],
+            "turn": instruction[1],
+            "duration": instruction[2]
+        }
+
+        try:
+            response = requests.post(f"{self.host_addr}/move", json=message)
+            arduino_response = response.json()["arduino response"]
+
+            return (response.ok, arduino_response)
+        except requests.exceptions.RequestException as e:
+            return (False, e)
     
-    # connects to the host at ip:port
-    def connect(self, ip, port):
+    def get_status(self) -> dict:
         try:
-            print(f"Connecting to {ip}:{port}...")
-            self.client.connect((ip, port))
-            print("connected.")
-        except socket.error as err:
-            print("error:", err)
-            sys.exit(1)
+            return requests.get(f"{self.host_addr}/status").text
+        except:
+            return None
 
-    # Sends a single byte for overall program control (i.e. exiting)
-    # 
-    # message: int [0, 255]
-    #       0: continue
-    #       1: terminate
-    def send_control(self, message):
-        # packs the int to a big-endian unsigned byte
-        message = struct.pack(">B", message)
+if __name__ == "__main__":
+    host_addr = "http://127.0.0.1:5000"
+    client = Client(host_addr)
 
-        self.client.sendall(message)
-
-    # Sends a message for robot movement.
-    # 
-    # speed, turn: percents in range [-100, 100]
-    # duration: milliseconds in range [0, 4,294,967,295]
-    def send_movement(self, message):
-        speed, turn, duration = message
-
-        # packs the five parameters into an 6-byte binary string
-        # ">bbIBB" = big-endian, signed byte, signed byte, unsigned 4-byte int
-        message = struct.pack(">bbI", speed, turn, duration)
-        
-        self.client.sendall(message)
-            
-    def close(self):
-        self.client.close()
-        print("Connection closed.")
+    print(client.check_connection())
+    print(client.send_movement(20, 50, 1001))
+    print(client.get_status())

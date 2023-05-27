@@ -5,19 +5,14 @@ import ipaddress
 from time import sleep
 from client import Client
 
-# creates and GUI and runs communication with a server.
-# 
-# polling_rate: the duration of a command, which affects how quickly the robot responds  
 class GUI:
-    def __init__(self, polling_rate):
-        self.ip = None
-        self.port = None
-        self.polling_rate = polling_rate
-        self.client = Client()
+    def __init__(self):
+        self.polling_rate = 200 # 200ms
+        self.start_session()
 
-    def start_remote_session(self):
+    def start_session(self):
         self.get_ip()
-        self.client.connect(self.ip, self.port)
+        self.client = Client(self.host_addr)
         self.run_main_window()
 
     def check_ip(self, ip):
@@ -44,8 +39,7 @@ class GUI:
                 host_addr = sg.popup_get_text("Enter robot IP (X.X.X.X:port)", title="Enter IP", text_color="Red")
                 continue
 
-            self.ip = host_addr[0]
-            self.port = int(host_addr[1])
+            self.host_addr = f"{host_addr[0]}:{host_addr[1]}"
             return
 
     def run_main_window(self):
@@ -62,7 +56,7 @@ class GUI:
                 [sg.Push(), sg.B("Disconnect", key="-disc-"), sg.Push()]]
 
         # defines a window with title, layout, and size
-        window = sg.Window(f"MRP Controller ({self.ip}:{self.port})", layout, size=(350, 500), finalize=True, use_default_focus=False)
+        window = sg.Window(f"MRP Controller ({self.host_addr})", layout, size=(350, 500), finalize=True, use_default_focus=False)
 
         # allows window to capture keystrokes
         window.bind("<Key>", "+key+")
@@ -165,8 +159,6 @@ class GUI:
             # send the message to the server if it is not a repeating stop
             if send_message:
                 print(message)
-                # tells server to accept realtime movement
-                self.client.send_control(0)
 
                 self.client.send_movement(message)
                 
@@ -176,27 +168,13 @@ class GUI:
                 send_message = False
 
         window.close()
-        
-        # tells the server to terminate
-        self.client.send_control(1)
-        
-        # terminates the client
-        self.client.close()
 
 def run_console_app():
-    client = Client()
+    # accepts the full ip and port of the host from the user
+    host_addr = input("Enter the address of the host (X.X.X.X:port): ")
     
-    # accepts the full ip and port of the host from the user,
-    # splits into IP and port across ':'
-    host_addr = input("Enter the address of the host (X.X.X.X:port): ").split(':')
-    host_ip = host_addr[0]
-    host_port = int(host_addr[1])
+    client = Client(host_addr)
     
-    client.connect(host_ip, host_port)
-    
-    # tells server to accept realtime movement
-    client.send_control(0)
-
     # runs a console session to get the three parameters and pass them to the server,
     # loops until stopped by user
     while True:
@@ -211,31 +189,21 @@ def run_console_app():
             continue
 
         duration = int(input("Duration (ms): "))
-        if duration > 4294967295:
-            print("Error: duration must be less than 4,294,967,295.") 
+        if not duration > 0:
+            print("Error: duration must be greater than 0.") 
             continue
         elif duration < 0:
             print("Error: duration must be greater than 0.")
             continue
 
-        client.send_movement(speed, turn, duration)
+        res = client.send_movement((speed, turn, duration))
+        print(res)
 
         if input("Continue [y/n]? ") == 'n':
             break
 
-        # tells server to accept movement
-        client.send_control(0)
-    
-    # tells the server to terminate
-    client.send_control(1)
-
-    # terminates the client
-    client.close()
-
 def run_gui_app():
-    polling_rate = 10 # milliseconds
-    gui = GUI(polling_rate)
-    gui.start_remote_session()
+    gui = GUI()
 
 if __name__ == "__main__":
     # run_console_app()
