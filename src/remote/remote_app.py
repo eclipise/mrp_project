@@ -61,9 +61,15 @@ class GUI:
         # defines a window with title, layout, and size
         window = sg.Window(f"MRP Controller ({self.host_addr})", layout, size=(350, 500), finalize=True, use_default_focus=False)
 
-        # allows window to capture keystrokes
-        window.bind("<Key>", "+key+")
-        window.bind("<KeyRelease>", "-key-")
+        # allows window to capture WASD keystrokes
+        window.bind("<KeyPress-w>", "+w+")
+        window.bind("<KeyRelease-w>", "-w-")
+        window.bind("<KeyPress-a>", "+a+")
+        window.bind("<KeyRelease-a>", "-a-")
+        window.bind("<KeyPress-s>", "+s+")
+        window.bind("<KeyRelease-s>", "-s-")
+        window.bind("<KeyPress-d>", "+d+")
+        window.bind("<KeyRelease-d>", "-d-")
 
         # variables for tracking held keys
         w_held = False
@@ -91,32 +97,32 @@ class GUI:
             if event in (sg.WIN_CLOSED, "-disc-"):
                 break
             
-            # event handler for keystrokes
-            if event == "+key+":
-                if window.user_bind_event.keycode == 25 and not w_held:
-                    w_held = True
+            # event handlers for keystrokes 
+            if event == "+w+":
+                w_held = True
+            
+            if event == "+a+":
+                a_held = True
+            
+            if event == "+d+":
+                d_held = True
+            
+            if event == "+s+":
+                s_held = True
+            
+            if event == "-w-":
+                w_held = False
+            
+            if event == "-a-":
+                a_held = False
+            
+            if event == "-s-":
+                s_held = False
+            
+            if event == "-d-":
+                d_held = False
                 
-                if window.user_bind_event.keycode == 38 and not a_held:
-                    a_held = True
-                
-                if window.user_bind_event.keycode == 39 and not d_held:
-                    d_held = True
-                
-                if window.user_bind_event.keycode == 4 and not s_held:
-                    s_held = True
-            elif event == "-key-":
-                if window.user_bind_event.keycode == 25 and w_held:
-                    w_held = False
-                
-                if window.user_bind_event.keycode == 38 and a_held:
-                    a_held = False
-                
-                if window.user_bind_event.keycode == 39 and d_held:
-                    d_held = False
-                
-                if window.user_bind_event.keycode == 40 and s_held:
-                    s_held = False
-                
+
             # event handler for changes to the movement slider
             if event == "-speed_sl-":
                 speed = int(values["-speed_sl-"])
@@ -173,7 +179,7 @@ class GUI:
                     last_message_time = time.time()
                     self.client.send_movement(message)
                     send_message = False
-
+        
         window.close()
 
 def run_console_app():
