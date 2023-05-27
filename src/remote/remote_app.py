@@ -2,7 +2,7 @@
 
 import PySimpleGUI as sg
 import ipaddress
-from time import sleep
+import time
 from client import Client
 
 class GUI:
@@ -46,6 +46,9 @@ class GUI:
         INITIAL_SPEED = 100 # percent of maximum speed 
         INITIAL_TURN = 100  # percent of maximum turn
         STOP_MSG = (0, 0, self.polling_rate)
+        
+        # used to track the interval between messages
+        last_message_time = time.time()
 
         # UI layout
         layout = [[sg.Push(), sg.RealtimeButton("", image_filename="resources/arrow_up.png", key="-f-"), sg.Push()],
@@ -89,24 +92,29 @@ class GUI:
                 break
             
             # event handler for keystrokes
-            # if event is key down, else if event is key up
             if event == "+key+":
-                if window.user_bind_event.keycode == 25:
+                if window.user_bind_event.keycode == 25 and not w_held:
                     w_held = True
-                elif window.user_bind_event.keycode == 38:
+                
+                if window.user_bind_event.keycode == 38 and not a_held:
                     a_held = True
-                elif window.user_bind_event.keycode == 39:
+                
+                if window.user_bind_event.keycode == 39 and not d_held:
                     d_held = True
-                elif window.user_bind_event.keycode == 40:
+                
+                if window.user_bind_event.keycode == 4 and not s_held:
                     s_held = True
             elif event == "-key-":
-                if window.user_bind_event.keycode == 25:
+                if window.user_bind_event.keycode == 25 and w_held:
                     w_held = False
-                elif window.user_bind_event.keycode == 38:
+                
+                if window.user_bind_event.keycode == 38 and a_held:
                     a_held = False
-                elif window.user_bind_event.keycode == 39:
+                
+                if window.user_bind_event.keycode == 39 and d_held:
                     d_held = False
-                elif window.user_bind_event.keycode == 40:
+                
+                if window.user_bind_event.keycode == 40 and s_held:
                     s_held = False
                 
             # event handler for changes to the movement slider
@@ -132,22 +140,22 @@ class GUI:
             # if the window has not timed out, a GUI button is being held
             elif event != sg.TIMEOUT_EVENT:
                 # event handler for the up arrow button and w key
-                if event == "-f-" or w_held:
+                if event == "-f-":
                     message = (speed, 0, self.polling_rate)
                     send_message = True
                 
                 # event handler for the left arrow button and a key
-                if event == "-l-" or a_held:
+                if event == "-l-":
                     message = (0, turn, self.polling_rate)
                     send_message = True
                 
                 # event handler for the right arrow button and d key
-                if event == "-r-" or d_held:
+                if event == "-r-":
                     message = (0, -turn, self.polling_rate)
                     send_message = True
                 
                 # event handler for the down arrow button and s key
-                if event == "-b-" or s_held:
+                if event == "-b-":
                     message = (-speed, 0, self.polling_rate)
                     send_message = True
 
@@ -158,14 +166,13 @@ class GUI:
 
             # send the message to the server if it is not a repeating stop
             if send_message:
-                print(message)
+                # print(message)
 
-                self.client.send_movement(message)
-                
-                # wait for the duration of the instruction before sending another
-                sleep(self.polling_rate/1000)
-                
-                send_message = False
+                # if the last message was sent long enough ago, send a new one
+                if time.time() - last_message_time >= (self.polling_rate / 1000):
+                    last_message_time = time.time()
+                    self.client.send_movement(message)
+                    send_message = False
 
         window.close()
 

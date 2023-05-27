@@ -19,7 +19,11 @@ class Client:
 
         try:
             response = requests.post(f"{self.host_addr}/move", json=message)
-            arduino_response = response.json()["arduino response"]
+            
+            if response.ok:
+                arduino_response = response.json()["arduino response"]
+            else:
+                arduino_response = ""
 
             return (response.ok, arduino_response)
         except requests.exceptions.RequestException as e:
@@ -36,5 +40,5 @@ if __name__ == "__main__":
     client = Client(host_addr)
 
     print(client.check_connection())
-    print(client.send_movement(20, 50, 1001))
+    print(client.send_movement((20, 50, 1001)))
     print(client.get_status())
