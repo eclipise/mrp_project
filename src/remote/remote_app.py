@@ -43,7 +43,6 @@ class GUI:
     def run_main_window(self):
         INITIAL_SPEED = 100 # percent of maximum speed 
         INITIAL_TURN = 100  # percent of maximum turn
-        STOP_MSG = (0, 0, self.polling_rate)
         
         # used to track the interval between messages
         last_message_time = time.time()
@@ -79,17 +78,13 @@ class GUI:
         speed = INITIAL_SPEED
         turn = INITIAL_TURN
 
-        # tuple that is transmitted to the server (speed, turn, duration)
-        message = STOP_MSG
-
-        # used to track whether a message is new and should be sent, which right now
-        # just prevents the stop message from being sent infinitely
+        # used to track whether a message is new and should be sent
         send_message = False 
 
         while True:  
             # reads all the events in the window (also necessary to spawn the window).
             # timeout value used to determine when no buttons are being held.
-            event, values = window.read(timeout=self.polling_rate)
+            event, values = window.read()
             
             # exits the main loop when the window is closed
             if event in (sg.WIN_CLOSED, "-disc-"):
@@ -143,35 +138,28 @@ class GUI:
                 send_message = True
             # if the window has not timed out, a GUI button is being held
             elif event != sg.TIMEOUT_EVENT:
-                # event handler for the up arrow button and w key
+                # event handler for the up arrow button
                 if event == "-f-":
                     message = (speed, 0, self.polling_rate)
                     send_message = True
                 
-                # event handler for the left arrow button and a key
+                # event handler for the left arrow button
                 if event == "-l-":
                     message = (0, turn, self.polling_rate)
                     send_message = True
                 
-                # event handler for the right arrow button and d key
+                # event handler for the right arrow button
                 if event == "-r-":
                     message = (0, -turn, self.polling_rate)
                     send_message = True
                 
-                # event handler for the down arrow button and s key
+                # event handler for the down arrow button
                 if event == "-b-":
                     message = (-speed, 0, self.polling_rate)
                     send_message = True
 
-            # else no button is being held
-            elif message != STOP_MSG:
-                message = STOP_MSG
-                send_message = True
-
-            # send the message to the server if it is not a repeating stop
+            # send the message to the server if it has not been sent
             if send_message:
-                # print(message)
-
                 # if the last message was sent long enough ago, send a new one
                 if time.time() - last_message_time >= (self.polling_rate / 1000):
                     last_message_time = time.time()
