@@ -6,7 +6,7 @@ class ArduinoController:
         try:
             self.arduino = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
         except serial.serialutil.SerialException as e:
-            print("Arduino not found:", e, sep="\n")
+            print("Arduino not found:", e)
             self.arduino = None
 
     # Send a movement command and returns any messages sent back

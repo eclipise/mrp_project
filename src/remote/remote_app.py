@@ -2,6 +2,7 @@ import PySimpleGUI as sg
 import ipaddress
 import time
 from client import Client
+import sys
 
 class GUI:
     def __init__(self):
@@ -11,6 +12,15 @@ class GUI:
     def start_session(self):
         self.get_ip()
         self.client = Client(self.host_addr)
+        
+        check = self.client.check_connection()
+
+        # if the client cannot reach the server, error and prompt for IP again
+        while not check[0]:
+            print("Unable to reach server:", check[1])
+            sg.popup_error("Unable to reach server")
+            self.get_ip()
+
         self.run_main_window()
 
     def check_ip(self, ip):
@@ -23,11 +33,11 @@ class GUI:
     def get_ip(self):
         # generates a popup prompt for the ip and port
         host_addr = sg.popup_get_text("Enter robot IP (X.X.X.X:port)", title="Enter IP")
-            
+
         while True:
-            # returns if the user selects cancel or closes the window
+            # exits if the user selects cancel or closes the window
             if host_addr is None:
-                return
+                sys.exit(0)
             
             # splits into ip and port across ":"
             host_addr = host_addr.split(":")
@@ -47,16 +57,95 @@ class GUI:
         # used to track the interval between messages
         last_message_time = time.time()
 
-        # UI layout
-        layout = [[sg.Push(), sg.RealtimeButton("", image_filename="resources/arrow_up.png", key="-f-"), sg.Push()],
-                [sg.RealtimeButton("", image_filename="resources/arrow_left.png", key="-l-"), sg.Push(), sg.RealtimeButton("", image_filename="resources/arrow_right.png", key="-r-")],
-                [sg.Push(), sg.RealtimeButton("", image_filename="resources/arrow_down.png", key="-b-"), sg.Push()],
-                [sg.Text("Speed"), sg.Slider(range=(0, 100), default_value=INITIAL_SPEED, expand_x=True, orientation="horizontal", enable_events=True, key="-speed_sl-")], 
-                [sg.Text("Turn Sharpness"), sg.Slider(range=(0, 100), default_value=INITIAL_TURN, expand_x=True, orientation="horizontal", enable_events=True, key="-turn_sl-")], 
-                [sg.Push(), sg.B("Disconnect", key="-disc-"), sg.Push()]]
+        # used to track the interval between status requests
+        last_refresh_time = time.time()
+
+        # --- control column elements ---
+
+        forward = sg.RealtimeButton(
+            "", 
+            image_filename="resources/arrow_up.png", 
+            key="-f-"
+        )
+
+        left = sg.RealtimeButton(
+            "",
+            image_filename="resources/arrow_left.png",
+            key="-l-"
+        )
+
+        right = sg.RealtimeButton(
+            "",
+            image_filename="resources/arrow_right.png", 
+            key="-r-"
+        )
+        
+        backward = sg.RealtimeButton(
+            "",
+            image_filename="resources/arrow_down.png",
+            key="-b-"
+        )
+
+        speed = sg.Slider(
+            range=(0, 100), 
+            default_value=INITIAL_SPEED, 
+            expand_x=True,
+            orientation="horizontal", 
+            enable_events=True,
+            key="-speed_sl-"
+        )
+        
+        turn = sg.Slider(
+            range=(0, 100),
+            default_value=INITIAL_TURN, 
+            expand_x=True,
+            orientation="horizontal",
+            enable_events=True,
+            key="-turn_sl-"
+        )
+
+        speed_label = sg.Text("Speed")
+
+        turn_label = sg.Text("Turn")
+        
+        disconnect = sg.B("Disconnect", key="-disc-")
+
+        # -------------------------------
+
+        # control column layout
+        control_column = [[sg.Push(), forward, sg.Push()],
+                          [left, sg.Push(), right],
+                          [sg.Push(), backward, sg.Push()],
+                          [speed_label, speed], 
+                          [turn_label, turn], 
+                          [sg.Push(), disconnect, sg.Push()]]
+
+        # --- display column elements ---
+
+        battery_label = sg.Text("Battery")
+
+        battery_value = sg.Text("100", key="-bat-", size=(3, None))
+
+        # -------------------------------
+
+        # display column layout
+        display_column = [[battery_label, battery_value]]
+
+        # overall UI layout
+        layout = [
+            [
+                sg.Column(control_column, expand_x=True, expand_y=True),
+                sg.VSeparator(),
+                sg.Column(display_column, vertical_alignment="top")
+            ]
+        ]
 
         # defines a window with title, layout, and size
-        window = sg.Window(f"MRP Controller ({self.host_addr})", layout, size=(350, 500), finalize=True, use_default_focus=False)
+        window = sg.Window(f"MRP Controller ({self.host_addr})",
+                           layout,
+                           size=(450, 500),
+                           finalize=True,
+                           use_default_focus=False)
 
         # allows window to capture WASD keystrokes
         window.bind("<KeyPress-w>", "+w+")
@@ -83,9 +172,16 @@ class GUI:
 
         while True:  
             # reads all the events in the window (also necessary to spawn the window).
-            # timeout value used to determine when no buttons are being held.
+            # timeout value used to refresh the data coming back from the robot
             event, values = window.read()
-            
+
+            # refresh the status if it has been at least one second since the last refresh
+            if time.time() - last_refresh_time >= 1:
+                last_refresh_time = time.time()
+
+                battery = self.client.get_status()["battery"]
+                window["-bat-"].update(battery)
+
             # exits the main loop when the window is closed
             if event in (sg.WIN_CLOSED, "-disc-"):
                 break
@@ -137,7 +233,7 @@ class GUI:
                 message = (-speed, 0, self.polling_rate)
                 send_message = True
             # if the window has not timed out, a GUI button is being held
-            elif event != sg.TIMEOUT_EVENT:
+            else:
                 # event handler for the up arrow button
                 if event == "-f-":
                     message = (speed, 0, self.polling_rate)

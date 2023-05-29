@@ -31,7 +31,7 @@ class Client:
     
     def get_status(self) -> dict:
         try:
-            return requests.get(f"{self.host_addr}/status").text
+            return requests.get(f"{self.host_addr}/status").json()
         except:
             return None
 
