@@ -6,20 +6,25 @@ const int motorPinsRight[6] = {3, 45, 47, 49, 51, 2};
 
 const int PWM_MAX = 255; // Maximum value for motor PWM, equivalent to 0xFF
 
-// int theTorque = 1.0625; // Conversion of how many bits will result in 1rpm
+// int theTorque = 1.0625; // PWM value equal to 1rpm
 
-// Aliases the analog pins A1 and A2 with the names of their connected IR sensors
-#define IR1 A1
-#define IR2 A2
+// Aliases the analog pins used by the IR sensors
+#define IR0_Pin A1 // Front left
+#define IR1_Pin A2 // Front right
+#define IR2_Pin A3 // Rear right
+#define IR3_Pin A4 // Rear left
+#define IR4_Pin A5 // Front center
 
-// TODO
-#define model 1080
+#define model 1080 // Model ID for the IR sensors, used internally in SharpIR
 
 // Sets up the IR sensors
-SharpIR SharpIR1(IR1, model);
-SharpIR SharpIR2(IR2, model);
+SharpIR IR0(IR0_Pin, model);
+SharpIR IR1(IR1_Pin, model);
+SharpIR IR2(IR2_Pin, model);
+SharpIR IR3(IR3_Pin, model);
+SharpIR IR4(IR4_Pin, model);
 
-int dis[2] = {0, 0}; // Array for IR sensor data
+int distance[5] = {0, 0, 0, 0, 0}; // Stores IR sensor data in cm {FL, FR, RR, RL, FC}
 
 // Runs once on Arduino startup and is used for initialization
 void setup() {
@@ -33,14 +38,65 @@ void setup() {
     Serial.begin(9600);
 }
 
-void getDistance(int *dis) {
-    unsigned long pepe1 = millis(); // takes the time before the loop on the library begins
+// Refreshes the distance array
+void updateDistance() {
+    // Gets the output of each IR sensor in cm
+    distance[0] = IR0.distance();
+    distance[1] = IR1.distance();
+    distance[2] = IR2.distance();
+    distance[3] = IR3.distance();
+    distance[4] = IR4.distance();
+}
 
-    int dis1 = SharpIR1.distance(); // this returns the distance to the object you're measuring
-    int dis2 = SharpIR2.distance();
+bool frontClear() {
+    updateDistance();
 
-    dis[0] = dis1; // Writing value of IR sensor onto location 0 of matrix
-    dis[1] = dis2; // Writing value of IR sensor onto location 1 of matrix
+    // True if front left and right are clear to 30 cm, front center is clear to 20 cm
+    return distance[0] > 30 &&
+           distance[1] > 30 &&
+           distance[4] > 20;
+}
+
+bool backClear() {
+    updateDistance();
+
+    // True if rear left and right are clear to 30 cm
+    return distance[2] > 30 &&
+           distance[3] > 30;
+}
+
+// Check if all sensors are clear at a shorter range, used for turning in place
+bool areaClear() {
+    updateDistance();
+
+    // True if all sensors are clear to 10 cm
+    return distance[0] > 10 &&
+           distance[1] > 10 &&
+           distance[2] > 10 &&
+           distance[3] > 10 &&
+           distance[4] > 10;
+}
+
+bool checkClear(int speed, int turn) {
+    // Aborts if robot is told to move forward and is not clear to do so
+    if (speed > 0 && !frontClear()) {
+        Serial.println("Abort: Front is not clear");
+        return false;
+    }
+
+    // Aborts if robot is told to move backwards and is not clear to do so
+    if (speed < 0 && !backClear()) {
+        Serial.println("Abort: Back is not clear");
+        return false;
+    }
+
+    // Aborts if robot is told to turn in place and the immediate area is not clear
+    if (turn != 0 && !areaClear()) {
+        Serial.println("Abort: Area is not clear");
+        return false;
+    }
+
+    return true;
 }
 
 void stopRobot() {
@@ -53,15 +109,15 @@ void stopRobot() {
     digitalWrite(motorPinsRight[3], 0); // Pin 49, int4
     digitalWrite(motorPinsRight[4], 0); // Pin 51, int3
 
-    Serial.println("STOP");
+    Serial.println("Status: Robot stopped");
 }
 
-// Speed and turn should be in range [-1.0, 1.0], duration should be greater than 0
-void moveRobot(float speed, float turn, int duration) {
+// Speed and turn should be in range [-1.0, 1.0], duration should be greater than 0 ms
+int moveRobot(float speed, float turn, int duration) {
     int leftSpeed, rightSpeed;
 
-    // Prints a status message to the controller
-    Serial.print("Info: Moving robot with command {speed: ");
+    // Prints the command to the controller
+    Serial.print("Status: Moving robot with command {speed: ");
     Serial.print(speed);
     Serial.print(", turn: ");
     Serial.print(turn);
@@ -69,11 +125,9 @@ void moveRobot(float speed, float turn, int duration) {
     Serial.print(duration);
     Serial.println("}");
 
-    getDistance(dis);
-
-    if (dis[0] < 20 || dis[1] < 30) {
-        stopRobot();
-        return;
+    // Return with failure code if the robot is not clear to perform the requested movement
+    if (!checkClear(speed, turn)) {
+        return 1; // Indicates failure to the caller
     }
 
     // Converts the input percent values to PWM values, mapping range [-1.0, 1.0]
@@ -98,12 +152,11 @@ void moveRobot(float speed, float turn, int duration) {
     analogWrite(motorPinsRight[0], abs(rightSpeed)); // Pin 3
     analogWrite(motorPinsRight[5], abs(rightSpeed)); // Pin 2
 
-    Serial.println("Speed for the left motors");
-    Serial.println(leftSpeed);
-    Serial.println("Speed for the right motors");
+    // Prints the speed values to the controller
+    Serial.print("Info: Left motor speed: ");
+    Serial.print(leftSpeed);
+    Serial.print("; right motor speed: ");
     Serial.println(rightSpeed);
-    // Serial.println("Speed for the left motors");
-    // Serial.println(theTorque);
 
     // Sets the int pins for the left motors
     if (leftSpeed > 0) {
@@ -112,14 +165,12 @@ void moveRobot(float speed, float turn, int duration) {
         digitalWrite(motorPinsLeft[2], 0); // Pin 46, int2
         digitalWrite(motorPinsLeft[3], 1); // Pin 48, int4
         digitalWrite(motorPinsLeft[4], 0); // Pin 50, int3
-        Serial.println("------------Forward Left");
     } else {
         // Backward
         digitalWrite(motorPinsLeft[1], 0);
         digitalWrite(motorPinsLeft[2], 1);
         digitalWrite(motorPinsLeft[3], 0);
         digitalWrite(motorPinsLeft[4], 1);
-        Serial.println("------------Backward Left");
     }
 
     // Sets the int pins for the right motors
@@ -129,19 +180,41 @@ void moveRobot(float speed, float turn, int duration) {
         digitalWrite(motorPinsRight[2], 0); // Pin 47, int2
         digitalWrite(motorPinsRight[3], 0); // Pin 49, int4
         digitalWrite(motorPinsRight[4], 1); // Pin 51, int3
-        Serial.println("------------Forward Right");
     } else {
-        // Backwards
+        // Backward
         digitalWrite(motorPinsRight[1], 0);
         digitalWrite(motorPinsRight[2], 1);
         digitalWrite(motorPinsRight[3], 1);
         digitalWrite(motorPinsRight[4], 0);
-        Serial.println("------------Backward Right");
     }
 
     // Waits for the duration of the instruction, then stops the robot
-    delay(duration);
+
+    // Logs the time the instruction started
+    unsigned long startTime = millis();
+    unsigned long currentTime;
+
+    // Checks if the robot is still clear to move every 10 ms as the instruction runs
+    while (true) {
+        currentTime = millis();
+
+        // If at least the desired duration has elapsed, exit the loop
+        if (currentTime - startTime >= duration) {
+            break;
+        }
+
+        // Stops the robot if it is no longer clear to move
+        if (!checkClear(speed, turn)) {
+            stopRobot();
+            return 1; // Indicates failure to the caller
+        }
+
+        // Waits for 10 milliseconds before checking again
+        delay(10);
+    }
+
     stopRobot();
+    return 0; // Indicates success to the caller
 }
 
 // Main loop, runs repeatedly while Arduino is on
@@ -176,7 +249,7 @@ void loop() {
             Serial.println("Error: Speed must be in range [-1.0, 1.0]");
             error = true;
         }
-        
+
         // Errors if the turn is out of range
         if (turnInput > 1.0 || turnInput < -1.0) {
             Serial.println("Error: Turn must be in range [-1.0, 1.0]");
@@ -185,13 +258,15 @@ void loop() {
 
         // On error, sends a sentinel message to the controller and returns without moving the robot
         if error {
-            Serial.println("END: failure");
+            Serial.println("END: Errors");
             return;
         }
 
-        moveRobot(speedInput, turnInput, durationInput);
-
-        // Informs the controller of successful movement
-        Serial.println("END: success");
+        result = moveRobot(speedInput, turnInput, durationInput);
+        if (result > 0) {
+            Serial.println("END: Failure");
+        } else {
+            Serial.println("END: Success");
+        }
     }
 }
