@@ -1,8 +1,9 @@
-from flask import Flask, request, Response, jsonify
+from flask import Flask, request, Response
 from arduino_controller import ArduinoController
 
 app = Flask(__name__)
-# arduino_controller = ArduinoController()
+arduino_controller = ArduinoController()
+arduino_connection = arduino_controller.arduino != None
 
 @app.get("/")
 def base_handler():
@@ -20,15 +21,21 @@ def move_handler():
     else:
         return {"errors": values[3]}, 400
     
-    # sends the movement command to the Arduino and gets its response
-    # arduino_response = arduino_controller.send_movement(values)
+    # communicates with the Arduino if one was found, falls back on debug printing otherwise
+    if arduino_connection:
+        # sends the movement command to the Arduino and gets its response
+        arduino_response = arduino_controller.send_movement(values)
+    else:
+        print("Server received:", values)
+
+        arduino_response = ["SAMPLE", 
+                            f"Status: Moving robot with command <speed: {values[0]}, turn: {values[1]}, duration: {values[2]}>",
+                            "Info: Left motor speed: 255; right motor speed: 255",
+                            "Status: Robot stopped",
+                            "END: Success"]
 
     # sends the Arduino's response to the client
-    # return {"arduino response": arduino_response}, 200
-
-    print(values)
-
-    return {"arduino response": "Sample response success"}, 200
+    return {"arduino response": arduino_response}, 200
 
 @app.get("/status")
 def status_handler():
@@ -88,4 +95,7 @@ def validate_movement(message: dict) -> tuple[int, int, int, list]:
 
 
 if __name__ == "__main__":
+    if not arduino_connection:
+        print("Running server without Arduino connection.")
+    
     app.run(debug=True)

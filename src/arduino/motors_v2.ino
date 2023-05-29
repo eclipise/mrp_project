@@ -117,13 +117,13 @@ int moveRobot(float speed, float turn, int duration) {
     int leftSpeed, rightSpeed;
 
     // Prints the command to the controller
-    Serial.print("Status: Moving robot with command {speed: ");
+    Serial.print("Status: Moving robot with command <speed: ");
     Serial.print(speed);
     Serial.print(", turn: ");
     Serial.print(turn);
     Serial.print(", duration: ");
     Serial.print(duration);
-    Serial.println("}");
+    Serial.println(">");
 
     // Return with failure code if the robot is not clear to perform the requested movement
     if (!checkClear(speed, turn)) {

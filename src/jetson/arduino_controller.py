@@ -2,8 +2,12 @@ import serial
 
 class ArduinoController:
     def __init__(self) -> None:
-        # establishes a serial connection to the Arduino
-        self.arduino = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
+        # establishes a serial connection to the Arduino, falls back to debug if this fails
+        try:
+            self.arduino = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
+        except serial.serialutil.SerialException as e:
+            print("Arduino not found:", e, sep="\n")
+            self.arduino = None
 
     # Send a movement command and returns any messages sent back
     def send_movement(self, values: tuple[int, int, int]) -> list:

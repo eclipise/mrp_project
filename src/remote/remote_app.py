@@ -1,5 +1,3 @@
-# main program running on the remote computer
-
 import PySimpleGUI as sg
 import ipaddress
 import time
@@ -177,7 +175,11 @@ class GUI:
                 # if the last message was sent long enough ago, send a new one
                 if time.time() - last_message_time >= (self.polling_rate / 1000):
                     last_message_time = time.time()
-                    self.client.send_movement(message)
+                    
+                    response = self.client.send_movement(message)
+                    
+                    print(response)
+
                     send_message = False
         
         window.close()
