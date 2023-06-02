@@ -1,4 +1,6 @@
-Flask>=2.3.2
-requests>=2.31.0
-PySimpleGUI>=4.60.5
-pyserial>=3.5
+# jetson
+Flask
+pyserial
+# remote
+requests
+PySimpleGUI

@@ -45,7 +45,7 @@ def status_handler():
 
     return status
 
-def validate_movement(message: dict) -> tuple[int, int, int, list]:
+def validate_movement(message: dict) -> tuple:
     # checks if the required keys are present
     speed_present = "speed" in message.keys()
     turn_present = "turn" in message.keys()
@@ -98,4 +98,4 @@ if __name__ == "__main__":
     if not arduino_connection:
         print("Running server without Arduino connection.")
     
-    app.run(debug=True)
+    app.run(debug=True, host="0.0.0.0")
