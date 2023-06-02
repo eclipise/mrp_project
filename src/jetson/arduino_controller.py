@@ -10,7 +10,7 @@ class ArduinoController:
             self.arduino = None
 
     # Send a movement command and returns any messages sent back
-    def send_movement(self, values: tuple) -> list:
+    def send_movement(self, values: tuple[int, int, int]) -> list:
         # "speed turn duration"
         message = f"{values[0]} {values[1]} {values[2]}\n"
         
