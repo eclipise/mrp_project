@@ -3,7 +3,6 @@ from arduino_controller import ArduinoController
 
 app = Flask(__name__)
 arduino_controller = ArduinoController()
-arduino_connection = arduino_controller.arduino != None
 
 @app.get("/")
 def base_handler():
@@ -15,15 +14,15 @@ def move_handler():
 
     values = validate_movement(message)
 
-    # if there are no errors, remove that from the tuple; else send the errors
+    # If there are no errors, remove that from the tuple; else send the errors
     if len(values[3]) == 0:
         values = (values[0], values[1], values[2])
     else:
-        return {"errors": values[3]}, 400
+        return {"errors": values[3]}, 400 # 400: bad request
     
-    # communicates with the Arduino if one was found, falls back on debug printing otherwise
-    if arduino_connection:
-        # sends the movement command to the Arduino and gets its response
+    # Communicates with the Arduino if one was found, falls back on debug printing otherwise
+    if arduino_controller.connected:
+        # Sends the movement command to the Arduino and gets its response
         arduino_response = arduino_controller.send_movement(values)
     else:
         print("Server received:", values)
@@ -34,7 +33,7 @@ def move_handler():
                             "Status: Robot stopped",
                             "END: Success"]
 
-    # sends the Arduino's response to the client
+    # Sends the Arduino's response to the client
     return {"arduino response": arduino_response}, 200
 
 @app.get("/status")
@@ -46,17 +45,17 @@ def status_handler():
     return status
 
 def validate_movement(message: dict) -> tuple[int, int, int, list]:
-    # checks if the required keys are present
+    # Checks if the required keys are present
     speed_present = "speed" in message.keys()
     turn_present = "turn" in message.keys()
     duration_present = "duration" in message.keys()
     
     # #######################################################################
     # If a key is not present, appends the relevant error to return message.
-    # If a key is present, checks if its value in the valid range and 
+    # If a key is present, checks if its value is in the valid range and 
     # appends the relevant error to the return message if it is not.
 
-    # remains empty if there are no errors
+    # Remains empty if there are no errors
     errors = list()
 
     if speed_present:
@@ -90,12 +89,12 @@ def validate_movement(message: dict) -> tuple[int, int, int, list]:
 
     # #######################################################################
 
-    # returns values as ints and either an error string or an empty string on success
+    # Returns values as ints and either an error string or an empty string on success
     return (speed, turn, duration, errors)
 
 
 if __name__ == "__main__":
-    if not arduino_connection:
+    if not arduino_controller.connected:
         print("Running server without Arduino connection.")
     
-    app.run(debug=True, host="0.0.0.0")
+    app.run(debug=False, host="0.0.0.0")
