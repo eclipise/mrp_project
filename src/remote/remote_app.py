@@ -6,7 +6,7 @@ import sys
 
 class GUI:
     def __init__(self):
-        self.polling_rate = 200 # 200ms
+        self.polling_rate = 200 # 200 ms
         self.start_session()
 
     def start_session(self):
@@ -15,7 +15,7 @@ class GUI:
         
         check = self.client.check_connection()
 
-        # if the client cannot reach the server, error and prompt for IP again
+        # If the client cannot reach the server, error and prompt for IP again
         while not check[0]:
             print("Unable to reach server:", check[1])
             sg.popup_error("Unable to reach server")
@@ -31,18 +31,18 @@ class GUI:
             return False
 
     def get_ip(self):
-        # generates a popup prompt for the ip and port
+        # Generates a popup prompt for the IP and port
         host_addr = sg.popup_get_text("Enter robot IP (X.X.X.X:port)", title="Enter IP")
 
         while True:
-            # exits if the user selects cancel or closes the window
+            # Exits if the user selects cancel or closes the window
             if host_addr is None:
                 sys.exit(0)
             
-            # splits into ip and port across ":"
+            # Splits into IP and port across ":"
             host_addr = host_addr.split(":")
 
-            # checks if the ip and port are valid and re-prompts if they are not
+            # Checks if the IP and port are valid and re-prompts if they are not
             if len(host_addr) != 2 or not self.check_ip(host_addr[0]) or not 65535 >= int(host_addr[1]) >= 1:
                 host_addr = sg.popup_get_text("Enter robot IP (X.X.X.X:port)", title="Enter IP", text_color="Red")
                 continue
@@ -51,16 +51,16 @@ class GUI:
             return
 
     def run_main_window(self):
-        INITIAL_SPEED = 100 # percent of maximum speed 
-        INITIAL_TURN = 100  # percent of maximum turn
+        INITIAL_SPEED = 100 # Percent of maximum speed 
+        INITIAL_TURN = 100  # Percent of maximum turn
         
-        # used to track the interval between messages
+        # Used to track the interval between messages
         last_message_time = time.time()
 
-        # used to track the interval between status requests
+        # Used to track the interval between status requests
         last_refresh_time = time.time()
 
-        # --- control column elements ---
+        # --- Control Column Elements ---
 
         forward = sg.RealtimeButton(
             "", 
@@ -112,7 +112,7 @@ class GUI:
 
         # -------------------------------
 
-        # control column layout
+        # Control column layout
         control_column = [[sg.Push(), forward, sg.Push()],
                           [left, sg.Push(), right],
                           [sg.Push(), backward, sg.Push()],
@@ -120,7 +120,7 @@ class GUI:
                           [turn_label, turn], 
                           [sg.Push(), disconnect, sg.Push()]]
 
-        # --- display column elements ---
+        # --- Sisplay Column Elements ---
 
         battery_label = sg.Text("Battery")
 
@@ -128,10 +128,10 @@ class GUI:
 
         # -------------------------------
 
-        # display column layout
+        # Sisplay column layout
         display_column = [[battery_label, battery_value]]
 
-        # overall UI layout
+        # Overall UI layout
         layout = [
             [
                 sg.Column(control_column, expand_x=True, expand_y=True),
@@ -140,14 +140,13 @@ class GUI:
             ]
         ]
 
-        # defines a window with title, layout, and size
         window = sg.Window(f"MRP Controller ({self.host_addr})",
                            layout,
                            size=(450, 500),
                            finalize=True,
                            use_default_focus=False)
 
-        # allows window to capture WASD keystrokes
+        # Allows window to capture WASD keystrokes
         window.bind("<KeyPress-w>", "+w+")
         window.bind("<KeyRelease-w>", "-w-")
         window.bind("<KeyPress-a>", "+a+")
@@ -157,36 +156,36 @@ class GUI:
         window.bind("<KeyPress-d>", "+d+")
         window.bind("<KeyRelease-d>", "-d-")
 
-        # variables for tracking held keys
+        # Variables for tracking held keys
         w_held = False
         a_held = False
         d_held = False
         s_held = False
 
-        # controlled by slider on UI
+        # Controlled by slider on UI
         speed = INITIAL_SPEED
         turn = INITIAL_TURN
 
-        # used to track whether a message is new and should be sent
+        # Used to track whether a message is new and should be sent
         send_message = False 
 
         while True:  
-            # reads all the events in the window (also necessary to spawn the window).
-            # timeout value used to refresh the data coming back from the robot
+            # Reads all the events in the window (also necessary to spawn the window).
+            # Timeout value is used to refresh the data coming back from the robot.
             event, values = window.read()
 
-            # refresh the status if it has been at least one second since the last refresh
+            # Refreshes the status if it has been at least one second since the last refresh
             if time.time() - last_refresh_time >= 1:
                 last_refresh_time = time.time()
 
                 battery = self.client.get_status()["battery"]
                 window["-bat-"].update(battery)
 
-            # exits the main loop when the window is closed
+            # Exits the main loop when the window is closed
             if event in (sg.WIN_CLOSED, "-disc-"):
                 break
             
-            # event handlers for keystrokes 
+            # Event handlers for keystrokes 
             if event == "+w+":
                 w_held = True
             
@@ -212,11 +211,11 @@ class GUI:
                 d_held = False
                 
 
-            # event handler for changes to the movement slider
+            # Event handler for changes to the movement slider
             if event == "-speed_sl-":
                 speed = int(values["-speed_sl-"])
 
-            # event handler for changes to the turn slider
+            # Event handler for changes to the turn slider
             if event == "-turn_sl-":
                 turn = int(values["-turn_sl-"])
             
@@ -232,31 +231,30 @@ class GUI:
             elif s_held:
                 message = (-speed, 0, self.polling_rate)
                 send_message = True
-            # if the window has not timed out, a GUI button is being held
             else:
-                # event handler for the up arrow button
+                # Event handler for the up arrow button
                 if event == "-f-":
                     message = (speed, 0, self.polling_rate)
                     send_message = True
                 
-                # event handler for the left arrow button
+                # Event handler for the left arrow button
                 if event == "-l-":
                     message = (0, turn, self.polling_rate)
                     send_message = True
                 
-                # event handler for the right arrow button
+                # Event handler for the right arrow button
                 if event == "-r-":
                     message = (0, -turn, self.polling_rate)
                     send_message = True
                 
-                # event handler for the down arrow button
+                # Event handler for the down arrow button
                 if event == "-b-":
                     message = (-speed, 0, self.polling_rate)
                     send_message = True
 
-            # send the message to the server if it has not been sent
+            # If there is a new, unsent message
             if send_message:
-                # if the last message was sent long enough ago, send a new one
+                # If the last message was sent long enough ago, send a new one
                 if time.time() - last_message_time >= (self.polling_rate / 1000):
                     last_message_time = time.time()
                     
@@ -269,13 +267,13 @@ class GUI:
         window.close()
 
 def run_console_app():
-    # accepts the full ip and port of the host from the user
+    # Accepts the full IP and port of the host from the user
     host_addr = input("Enter the address of the host (X.X.X.X:port): ")
     
     client = Client(host_addr)
     
-    # runs a console session to get the three parameters and pass them to the server,
-    # loops until stopped by user
+    # Runs a console session to get the three parameters and pass them to the server,
+    # loops until stopped by user.
     while True:
         speed = int(input("Speed %[-100, 100]: "))
         if not 100 >= speed >= -100:

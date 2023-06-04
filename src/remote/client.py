@@ -4,6 +4,7 @@ class Client:
     def __init__(self, host_addr: str) -> None:
         self.host_addr = f"http://{host_addr}"
 
+    # Attempts to connect to the base address
     def check_connection(self) -> tuple[bool, str]:
         try:
             return (requests.get(self.host_addr).ok, "")
@@ -11,6 +12,7 @@ class Client:
             return (False, e)
 
     def send_movement(self, instruction: tuple[int, int, int]) -> tuple[bool, str]:
+        # Pack values into a dictionary to mimic JSON structure
         message = {
             "speed": instruction[0],
             "turn": instruction[1],
@@ -19,13 +21,14 @@ class Client:
 
         try:
             response = requests.post(f"{self.host_addr}/move", json=message)
-            
-            if response.ok:
+            success = response.ok
+
+            if success:
                 arduino_response = response.json()["arduino response"]
             else:
-                arduino_response = ""
+                arduino_response = response.json()["errors"]
 
-            return (response.ok, arduino_response)
+            return (success, arduino_response)
         except requests.exceptions.RequestException as e:
             return (False, e)
     
