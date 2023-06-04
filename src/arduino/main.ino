@@ -6,7 +6,7 @@ const int motorPinsRight[6] = {3, 45, 47, 49, 51, 2};
 
 const int PWM_MAX = 255; // Maximum value for motor PWM, equivalent to 0xFF
 
-// int theTorque = 1.0625; // PWM value equal to 1rpm
+// int torque = 1.0625; // PWM value equal to 1rpm
 
 // Aliases the analog pins used by the IR sensors
 #define IR0_Pin A1 // Front left
@@ -65,7 +65,7 @@ bool backClear() {
            distance[3] > 30;
 }
 
-// Check if all sensors are clear at a shorter range, used for turning in place
+// Checks if all sensors are clear at a shorter range, used for turning in place
 bool areaClear() {
     updateDistance();
 
@@ -135,7 +135,7 @@ int moveRobot(float speed, float turn, int duration) {
     speed *= PWM_MAX;
     turn *= PWM_MAX;
 
-    // theTorque *= speed; // Math conversion of the bits to rpm for the motors
+    // torque *= speed; // Math conversion of the bits to rpm for the motors
 
     // If turn is positive, turn to the left by making left motors slower and right motors faster;
     // if turn is negative, turn to the right by making left motors faster and right motors slower.
@@ -188,10 +188,7 @@ int moveRobot(float speed, float turn, int duration) {
         digitalWrite(motorPinsRight[4], 0);
     }
 
-    // Waits for the duration of the instruction, then stops the robot
-
-    // Logs the time the instruction started
-    unsigned long startTime = millis();
+    unsigned long startTime = millis(); // Logs the time the instruction started
     unsigned long currentTime;
 
     // Checks if the robot is still clear to move every 10 ms as the instruction runs
@@ -238,12 +235,6 @@ void loop() {
             error = true;
         }
 
-        // Errors if the duration is less than or equal to 0
-        if (durationInput <= 0) {
-            Serial.println("Error: Duration must be greater than 0");
-            error = true;
-        }
-
         // Errors if the speed is out of range
         if (speedInput > 1.0 || speedInput < -1.0) {
             Serial.println("Error: Speed must be in range [-1.0, 1.0]");
@@ -253,6 +244,12 @@ void loop() {
         // Errors if the turn is out of range
         if (turnInput > 1.0 || turnInput < -1.0) {
             Serial.println("Error: Turn must be in range [-1.0, 1.0]");
+            error = true;
+        }
+
+        // Errors if the duration is less than or equal to 0
+        if (durationInput <= 0) {
+            Serial.println("Error: Duration must be greater than 0");
             error = true;
         }
 
