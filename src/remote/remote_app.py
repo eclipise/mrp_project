@@ -120,7 +120,7 @@ class GUI:
                           [turn_label, turn], 
                           [sg.Push(), disconnect, sg.Push()]]
 
-        # --- Sisplay Column Elements ---
+        # --- Display Column Elements ---
 
         battery_label = sg.Text("Battery")
 
@@ -128,7 +128,7 @@ class GUI:
 
         # -------------------------------
 
-        # Sisplay column layout
+        # Display column layout
         display_column = [[battery_label, battery_value]]
 
         # Overall UI layout
