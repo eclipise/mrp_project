@@ -1,6 +1,0 @@
-# jetson
-Flask
-pyserial
-# remote
-requests
-PySimpleGUI
