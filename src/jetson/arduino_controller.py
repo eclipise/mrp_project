@@ -5,13 +5,13 @@ class ArduinoController:
         self.connected = False
         
         # Attempts to connect to the arduino
-        self.connect_arduino
+        self.connect_arduino()
 
     # Sends a movement command and returns any messages sent back
     def send_movement(self, values: tuple) -> list:
         # Errors if the Arduino is not connected
-        if not self.arduino_connected:
-            return list("Error: Arduino not connected", "END")
+        if not self.connected:
+            return ["Error: Arduino not connected", "END"]
         
         # "speed turn duration"
         message = f"{values[0]} {values[1]} {values[2]}\n"
@@ -31,7 +31,7 @@ class ArduinoController:
                 response.append(line)
                 
                 # Breaks if the first three characters of the response are "END"
-                if(line[:2] == "END"):
+                if(line[:3] == "END"):
                     break
 
         return response
