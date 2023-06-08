@@ -44,7 +44,7 @@ def status_handler():
 
     return status
 
-def validate_movement(message: dict) -> tuple[int, int, int, list]:
+def validate_movement(message: dict) -> tuple:
     # Checks if the required keys are present
     speed_present = "speed" in message.keys()
     turn_present = "turn" in message.keys()

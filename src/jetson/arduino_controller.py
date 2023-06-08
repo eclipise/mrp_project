@@ -8,7 +8,7 @@ class ArduinoController:
         self.connect_arduino
 
     # Sends a movement command and returns any messages sent back
-    def send_movement(self, values: tuple[int, int, int]) -> list:
+    def send_movement(self, values: tuple) -> list:
         # Errors if the Arduino is not connected
         if not self.arduino_connected:
             return list("Error: Arduino not connected", "END")
