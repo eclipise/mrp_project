@@ -174,16 +174,16 @@ class GUI:
             # Timeout value is used to refresh the data coming back from the robot.
             event, values = window.read()
 
+            # Exits the main loop when the window is closed
+            if event in (sg.WIN_CLOSED, "-disc-"):
+                break
+
             # Refreshes the status if it has been at least one second since the last refresh
             if time.time() - last_refresh_time >= 1:
                 last_refresh_time = time.time()
 
                 battery = self.client.get_status()["battery"]
                 window["-bat-"].update(battery)
-
-            # Exits the main loop when the window is closed
-            if event in (sg.WIN_CLOSED, "-disc-"):
-                break
             
             # Event handlers for keystrokes 
             if event == "+w+":
