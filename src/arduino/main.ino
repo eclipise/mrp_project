@@ -112,8 +112,8 @@ void stopRobot() {
     Serial.println("Status: Robot stopped");
 }
 
-// Speed and turn should be in range [-1.0, 1.0], duration should be greater than 0 ms
-int moveRobot(float speed, float turn, int duration) {
+// Speed and turn should be in range [-100, 100], duration should be greater than 0 ms
+int moveRobot(int speed, int turn, int duration) {
     int leftSpeed, rightSpeed;
 
     // Prints the command to the controller
@@ -130,8 +130,8 @@ int moveRobot(float speed, float turn, int duration) {
         return 1; // Indicates failure to the caller
     }
 
-    // Converts the input percent values to PWM values, mapping range [-1.0, 1.0]
-    // to range [-255, 255]. i.e. 1.0 becomes 255, and -0.5 becomes -127.5.
+    // Converts the input percent values to PWM values, mapping range [-100, 100]
+    // to range [-255, 255]. i.e. 100 becomes 255, and -50 becomes -127.5.
     speed *= PWM_MAX;
     turn *= PWM_MAX;
 
@@ -139,8 +139,8 @@ int moveRobot(float speed, float turn, int duration) {
 
     // If turn is positive, turn to the left by making left motors slower and right motors faster;
     // if turn is negative, turn to the right by making left motors faster and right motors slower.
-    leftSpeed = int(speed - turn);
-    rightSpeed = int(speed + turn);
+    leftSpeed = speed - turn;
+    rightSpeed = speed + turn;
 
     // Constrains the speed to range [-255, 255], the maximum value for PWM
     leftSpeed = constrain(leftSpeed, -PWM_MAX, PWM_MAX);
@@ -236,14 +236,14 @@ void loop() {
         }
 
         // Errors if the speed is out of range
-        if (speedInput > 1.0 || speedInput < -1.0) {
-            Serial.println("Error: Speed must be in range [-1.0, 1.0]");
+        if (speedInput > 100 || speedInput < -100) {
+            Serial.println("Error: Speed must be in range [-100, 100]");
             error = true;
         }
 
         // Errors if the turn is out of range
-        if (turnInput > 1.0 || turnInput < -1.0) {
-            Serial.println("Error: Turn must be in range [-1.0, 1.0]");
+        if (turnInput > 100 || turnInput < -100) {
+            Serial.println("Error: Turn must be in range [-100, 100]");
             error = true;
         }
 
@@ -254,7 +254,7 @@ void loop() {
         }
 
         // On error, sends a sentinel message to the controller and returns without moving the robot
-        if error {
+        if (error) {
             Serial.println("END: Errors");
             return;
         }
