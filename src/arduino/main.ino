@@ -220,8 +220,10 @@ int moveRobot(int speed, int turn, int duration) {
             break;
         }
 
-        // Waits for 10 milliseconds before checking again
-        delay(10);
+        // If there is enough time left during the command to check the sensors
+        if (abs(currentTime - startTime - duration) > 100){
+            updateDistance();
+        }
     }
 
     stopRobot();
@@ -235,6 +237,9 @@ void loop() {
 
     // Tracks if there has been a fatal error
     bool error = false;
+
+    // Updates IR sensor data constantly while idle to prevent lag when checking before movement
+    updateDistance();
 
     if (Serial.available() > 0) {
         // Reads the incoming message
@@ -261,7 +266,8 @@ void loop() {
             error = true;
         }
 
-        // TODO: fix the duration range
+        // TODO: fix the duration maximum 
+        // TODO: min duration may need to be constrained based on sensor check time
         // Errors if the duration is out of range
         if (durationInput <= 0) {
             Serial.println("Error: Duration must be in range [1, 32767] ms");
