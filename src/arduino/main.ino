@@ -1,30 +1,31 @@
 #include <SharpIR.h>
 
+const bool DEBUG_MODE = true; // Enables additional printing over the serial connection
+const int CLEAR_THRESHOLD = 40 // Distance at which an object is considered to be blocking an IR sensor (cm)
+
 // Pin numbers for output; single digits are for PWM, all others are for direction
 const int motorPinsLeft[6] = {5, 44, 46, 48, 50, 4};
 const int motorPinsRight[6] = {3, 45, 47, 49, 51, 2};
 
 const int PWM_MAX = 255; // Maximum value for motor PWM, equivalent to 0xFF
 
-// int torque = 1.0625; // PWM value equal to 1rpm
-
 // Aliases the analog pins used by the IR sensors
-#define IR0_Pin A1 // Front left
-#define IR1_Pin A2 // Front right
-#define IR2_Pin A3 // Rear right
-#define IR3_Pin A4 // Rear left
-#define IR4_Pin A5 // Front center
+#define IR_FL_Pin A1 // Front left
+#define IR_FR_Pin A2 // Front right
+#define IR_RR_Pin A3 // Rear right
+#define IR_RL_Pin A4 // Rear left
+#define IR_FC_Pin A5 // Front center
 
-#define model 1080 // Model ID for the IR sensors, used internally in SharpIR
+#define model SharpIR::GP2Y0A21YK0F // Model ID for the IR sensors, used internally in SharpIR
 
 // Sets up the IR sensors
-SharpIR IR0(IR0_Pin, model);
-SharpIR IR1(IR1_Pin, model);
-SharpIR IR2(IR2_Pin, model);
-SharpIR IR3(IR3_Pin, model);
-SharpIR IR4(IR4_Pin, model);
+SharpIR IR_FR(model, IR_FR_Pin);
+SharpIR IR_FL(model, IR_FL_Pin);
+SharpIR IR_RR(model, IR_RR_Pin);
+SharpIR IR_RL(model, IR_RL_Pin);
+SharpIR IR_FC(model, IR_FC_Pin);
 
-int distance[5] = {0, 0, 0, 0, 0}; // Stores IR sensor data in cm {FL, FR, RR, RL, FC}
+int fr_avg, fl_avg, rl_avg, rr_avg, fc_avg; // Moving average sensor data
 
 // Runs once on Arduino startup and is used for initialization
 void setup() {
@@ -40,41 +41,55 @@ void setup() {
 
 // Refreshes the distance array
 void updateDistance() {
-    // Gets the output of each IR sensor in cm
-    distance[0] = IR0.distance();
-    distance[1] = IR1.distance();
-    distance[2] = IR2.distance();
-    distance[3] = IR3.distance();
-    distance[4] = IR4.distance();
+    int ir_dist[5] = {0, 0, 0, 0, 0}; // Sum of 5 samples from each IR sensor [FR, FL, RR, RL, FC]
+
+    // Sums 5 samples from each IR sensor (this should take between 100 and 150 ms)
+    for (int i = 0; i < 5; i++) {
+        ir_dist[0] += IR_FR.getDistance();
+        ir_dist[1] += IR_FL.getDistance();
+        ir_dist[2] += IR_RL.getDistance();
+        ir_dist[3] += IR_RR.getDistance();
+        ir_dist[4] += IR_FC.getDistance();
+    }
+    
+    fr_avg = ir_dist[0] / 5;
+    fl_avg = ir_dist[1] / 5;
+    rl_avg = ir_dist[2] / 5;
+    rr_avg = ir_dist[3] / 5;
+    fc_avg = ir_dist[4] / 5;
+
+    if (DEBUG_MODE) {
+        // Returns the sensor data for debug
+        Serial.print("Info: fr_dist: ");
+        Serial.print(fr_avg);
+        Serial.print("; fl_dist: ");
+        Serial.print(fl_avg);
+        Serial.print("; rl_dist: ");
+        Serial.print(rl_avg);
+        Serial.print("; rr_dist: ");
+        Serial.print(rr_avg);
+        Serial.print("; fc_dist: ");
+        Serial.println(fc_avg);
+    }
 }
 
 bool frontClear() {
-    updateDistance();
-
-    // True if front left and right are clear to 30 cm, front center is clear to 20 cm
-    return distance[0] > 30 &&
-           distance[1] > 30 &&
-           distance[4] > 20;
+    return fr_avg > CLEAR_THRESHOLD &&
+           fl_avg > CLEAR_THRESHOLD &&
+           fc_avg > CLEAR_THRESHOLD;
 }
 
 bool backClear() {
-    updateDistance();
-
-    // True if rear left and right are clear to 30 cm
-    return distance[2] > 30 &&
-           distance[3] > 30;
+    return rl_avg > CLEAR_THRESHOLD &&
+           rr_avg > CLEAR_THRESHOLD;
 }
 
-// Checks if all sensors are clear at a shorter range, used for turning in place
 bool areaClear() {
-    updateDistance();
-
-    // True if all sensors are clear to 10 cm
-    return distance[0] > 10 &&
-           distance[1] > 10 &&
-           distance[2] > 10 &&
-           distance[3] > 10 &&
-           distance[4] > 10;
+    return fr_avg > CLEAR_THRESHOLD &&
+           fl_avg > CLEAR_THRESHOLD &&
+           rl_avg > CLEAR_THRESHOLD &&
+           rr_avg > CLEAR_THRESHOLD &&
+           fc_avg > CLEAR_THRESHOLD;
 }
 
 bool checkClear(int speed, int turn) {
@@ -108,22 +123,28 @@ void stopRobot() {
     digitalWrite(motorPinsRight[2], 0); // Pin 47, int2
     digitalWrite(motorPinsRight[3], 0); // Pin 49, int4
     digitalWrite(motorPinsRight[4], 0); // Pin 51, int3
-
-    Serial.println("Status: Robot stopped");
+    
+    if (DEBUG_MODE) {
+        Serial.println("Status: Robot stopped");
+    }
 }
 
 // Speed and turn should be in range [-100, 100], duration should be greater than 0 ms
 int moveRobot(int speed, int turn, int duration) {
-    int leftSpeed, rightSpeed;
+    if (DEBUG_MODE) {
+        // Prints the command to the controller
+        Serial.print("Status: Moving robot with command <speed: ");
+        Serial.print(speed);
+        Serial.print(", turn: ");
+        Serial.print(turn);
+        Serial.print(", duration: ");
+        Serial.print(duration);
+        Serial.println(">");
+    }
 
-    // Prints the command to the controller
-    Serial.print("Status: Moving robot with command <speed: ");
-    Serial.print(speed);
-    Serial.print(", turn: ");
-    Serial.print(turn);
-    Serial.print(", duration: ");
-    Serial.print(duration);
-    Serial.println(">");
+    int leftSpeed, rightSpeed;
+    speed /= 100; // Adjusts the ranges from [-100, 100] to [-1.00, 1.00]
+    turn /= 100;
 
     // Return with failure code if the robot is not clear to perform the requested movement
     if (!checkClear(speed, turn)) {
@@ -134,8 +155,6 @@ int moveRobot(int speed, int turn, int duration) {
     // to range [-255, 255]. i.e. 100 becomes 255, and -50 becomes -127.5.
     speed *= PWM_MAX;
     turn *= PWM_MAX;
-
-    // torque *= speed; // Math conversion of the bits to rpm for the motors
 
     // If turn is positive, turn to the left by making left motors slower and right motors faster;
     // if turn is negative, turn to the right by making left motors faster and right motors slower.
@@ -152,11 +171,13 @@ int moveRobot(int speed, int turn, int duration) {
     analogWrite(motorPinsRight[0], abs(rightSpeed)); // Pin 3
     analogWrite(motorPinsRight[5], abs(rightSpeed)); // Pin 2
 
-    // Prints the speed values to the controller
-    Serial.print("Info: Left motor speed: ");
-    Serial.print(leftSpeed);
-    Serial.print("; right motor speed: ");
-    Serial.println(rightSpeed);
+    if (DEBUG_MODE) {
+        // Prints the speed values to the controller
+        Serial.print("Info: Left motor speed: ");
+        Serial.print(leftSpeed);
+        Serial.print("; right motor speed: ");
+        Serial.println(rightSpeed);
+    }
 
     // Sets the int pins for the left motors
     if (leftSpeed > 0) {
@@ -191,19 +212,12 @@ int moveRobot(int speed, int turn, int duration) {
     unsigned long startTime = millis(); // Logs the time the instruction started
     unsigned long currentTime;
 
-    // Checks if the robot is still clear to move every 10 ms as the instruction runs
     while (true) {
         currentTime = millis();
 
         // If at least the desired duration has elapsed, exit the loop
         if (currentTime - startTime >= duration) {
             break;
-        }
-
-        // Stops the robot if it is no longer clear to move
-        if (!checkClear(speed, turn)) {
-            stopRobot();
-            return 1; // Indicates failure to the caller
         }
 
         // Waits for 10 milliseconds before checking again
@@ -247,9 +261,10 @@ void loop() {
             error = true;
         }
 
-        // Errors if the duration is less than or equal to 0
+        // TODO: fix the duration range
+        // Errors if the duration is out of range
         if (durationInput <= 0) {
-            Serial.println("Error: Duration must be greater than 0");
+            Serial.println("Error: Duration must be in range [1, 32767] ms");
             error = true;
         }
 
