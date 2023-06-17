@@ -1,39 +1,52 @@
 #include <SharpIR.h>
 
 const bool DEBUG_MODE = true; // Enables additional printing over the serial connection
-const int CLEAR_THRESHOLD = 40 // Distance at which an object is considered to be blocking an IR sensor (cm)
+const int CLEAR_THRESHOLD = 30; // Distance at which an object is considered to be blocking an IR sensor (cm)
 
-// Pin numbers for output; single digits are for PWM, all others are for direction
-const int motorPinsLeft[6] = {5, 44, 46, 48, 50, 4};
-const int motorPinsRight[6] = {3, 45, 47, 49, 51, 2};
+// Pins for connection to the left motor driver
+const int L_ENA = 4;
+const int L_ENB = 5;
+const int L_INT1 = 44;
+const int L_INT2 = 46;
+const int L_INT3 = 48;
+const int L_INT4 = 50;
 
-const int PWM_MAX = 255; // Maximum value for motor PWM, equivalent to 0xFF
+// Pins for connection to the right motor driver
+const int R_ENA = 2;
+const int R_ENB = 3;
+const int R_INT1 = 45;
+const int R_INT2 = 47;
+const int R_INT3 = 49;
+const int R_INT4 = 51;
 
-// Aliases the analog pins used by the IR sensors
-#define IR_FL_Pin A1 // Front left
-#define IR_FR_Pin A2 // Front right
-#define IR_RR_Pin A3 // Rear right
-#define IR_RL_Pin A4 // Rear left
-#define IR_FC_Pin A5 // Front center
+const int PWM_MAX = 255; // Maximum value for motor PWM
 
 #define model SharpIR::GP2Y0A21YK0F // Model ID for the IR sensors, used internally in SharpIR
 
-// Sets up the IR sensors
-SharpIR IR_FR(model, IR_FR_Pin);
-SharpIR IR_FL(model, IR_FL_Pin);
-SharpIR IR_RR(model, IR_RR_Pin);
-SharpIR IR_RL(model, IR_RL_Pin);
-SharpIR IR_FC(model, IR_FC_Pin);
+// Sets up the IR sensors, second parameter is the pin they're connected to
+SharpIR IR_FL(model, A1); // Front left
+SharpIR IR_FR(model, A2); // Front right
+SharpIR IR_RR(model, A3); // Rear right
+SharpIR IR_RL(model, A4); // Rear left
+SharpIR IR_FC(model, A5); // Front center
 
-int fr_avg, fl_avg, rl_avg, rr_avg, fc_avg; // Moving average sensor data
+int fr_avg, fl_avg, rl_avg, rr_avg, fc_avg; // Average IR sensor data; use this instead of the raw
 
 // Runs once on Arduino startup and is used for initialization
 void setup() {
-    // Sets all pins to output mode
-    for (int i = 0; i < 6; i++) {
-        pinMode(motorPinsLeft[i], OUTPUT);
-        pinMode(motorPinsRight[i], OUTPUT);
-    }
+    // Sets all motor control pins to output mode
+    pinMode(L_ENA, OUTPUT);
+    pinMode(L_ENB, OUTPUT);
+    pinMode(L_INT1, OUTPUT);
+    pinMode(L_INT2, OUTPUT);
+    pinMode(L_INT3, OUTPUT);
+    pinMode(L_INT4, OUTPUT);
+    pinMode(R_ENA, OUTPUT);
+    pinMode(R_ENB, OUTPUT);
+    pinMode(R_INT1, OUTPUT);
+    pinMode(R_INT2, OUTPUT);
+    pinMode(R_INT3, OUTPUT);
+    pinMode(R_INT4, OUTPUT);
 
     // Starts serial communication with the Arduino using baud rate 9600
     Serial.begin(9600);
@@ -115,14 +128,15 @@ bool checkClear(int speed, int turn) {
 }
 
 void stopRobot() {
-    digitalWrite(motorPinsLeft[1], 0);  // Pin 44, int1
-    digitalWrite(motorPinsLeft[2], 0);  // Pin 46, int2
-    digitalWrite(motorPinsLeft[3], 0);  // Pin 48, int4
-    digitalWrite(motorPinsLeft[4], 0);  // Pin 50, int3
-    digitalWrite(motorPinsRight[1], 0); // Pin 45, int1
-    digitalWrite(motorPinsRight[2], 0); // Pin 47, int2
-    digitalWrite(motorPinsRight[3], 0); // Pin 49, int4
-    digitalWrite(motorPinsRight[4], 0); // Pin 51, int3
+    digitalWrite(L_INT1, 0);
+    digitalWrite(L_INT2, 0);
+    digitalWrite(L_INT3, 0);
+    digitalWrite(L_INT4, 0);
+    
+    digitalWrite(R_INT1, 0);
+    digitalWrite(R_INT2, 0);
+    digitalWrite(R_INT3, 0);
+    digitalWrite(R_INT4, 0);
     
     if (DEBUG_MODE) {
         Serial.println("Status: Robot stopped");
@@ -166,10 +180,10 @@ int moveRobot(int speed, int turn, int duration) {
     rightSpeed = constrain(rightSpeed, -PWM_MAX, PWM_MAX);
 
     // Sends the speed to the motors
-    analogWrite(motorPinsLeft[0], abs(leftSpeed));   // Pin 5
-    analogWrite(motorPinsLeft[5], abs(leftSpeed));   // Pin 4
-    analogWrite(motorPinsRight[0], abs(rightSpeed)); // Pin 3
-    analogWrite(motorPinsRight[5], abs(rightSpeed)); // Pin 2
+    analogWrite(L_ENA, abs(leftSpeed));
+    analogWrite(L_ENB, abs(leftSpeed));
+    analogWrite(R_ENA, abs(rightSpeed));
+    analogWrite(R_ENB, abs(rightSpeed));
 
     if (DEBUG_MODE) {
         // Prints the speed values to the controller
@@ -182,31 +196,31 @@ int moveRobot(int speed, int turn, int duration) {
     // Sets the int pins for the left motors
     if (leftSpeed > 0) {
         // Forward
-        digitalWrite(motorPinsLeft[1], 1); // Pin 44, int1
-        digitalWrite(motorPinsLeft[2], 0); // Pin 46, int2
-        digitalWrite(motorPinsLeft[3], 1); // Pin 48, int4
-        digitalWrite(motorPinsLeft[4], 0); // Pin 50, int3
+        digitalWrite(L_INT1, 1);
+        digitalWrite(L_INT2, 0);
+        digitalWrite(L_INT3, 1);
+        digitalWrite(L_INT4, 0);
     } else {
         // Backward
-        digitalWrite(motorPinsLeft[1], 0);
-        digitalWrite(motorPinsLeft[2], 1);
-        digitalWrite(motorPinsLeft[3], 0);
-        digitalWrite(motorPinsLeft[4], 1);
+        digitalWrite(L_INT1, 0);
+        digitalWrite(L_INT2, 1);
+        digitalWrite(L_INT3, 0);
+        digitalWrite(L_INT4, 1);
     }
 
     // Sets the int pins for the right motors
     if (rightSpeed > 0) {
         // Forward
-        digitalWrite(motorPinsRight[1], 1); // Pin 45, int1
-        digitalWrite(motorPinsRight[2], 0); // Pin 47, int2
-        digitalWrite(motorPinsRight[3], 0); // Pin 49, int4
-        digitalWrite(motorPinsRight[4], 1); // Pin 51, int3
+        digitalWrite(R_INT1, 1);
+        digitalWrite(R_INT2, 0);
+        digitalWrite(R_INT3, 0);
+        digitalWrite(R_INT4, 1);
     } else {
         // Backward
-        digitalWrite(motorPinsRight[1], 0);
-        digitalWrite(motorPinsRight[2], 1);
-        digitalWrite(motorPinsRight[3], 1);
-        digitalWrite(motorPinsRight[4], 0);
+        digitalWrite(R_INT1, 0);
+        digitalWrite(R_INT2, 1);
+        digitalWrite(R_INT3, 1);
+        digitalWrite(R_INT4, 0);
     }
 
     unsigned long startTime = millis(); // Logs the time the instruction started
