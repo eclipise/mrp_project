@@ -1,7 +1,26 @@
 #include <SharpIR.h>
+#include <geometry_msgs/Twist.h>
+#include <ros.h>
 
-const bool DEBUG_MODE = true; // Enables additional printing over the serial connection
+const bool DEBUG_MODE = true;   // Enables additional printing over the serial connection
 const int CLEAR_THRESHOLD = 30; // Distance at which an object is considered to be blocking an IR sensor (cm)
+
+ros::NodeHandle nh;
+
+unsigned long lastCommandTime = 0; // Timestamp in milliseconds of the last command
+
+// Time in milliseconds to continue the last command before stopping, in absence of a new command
+const unsigned COMMAND_TIMEOUT = 200;
+
+// These values are from -255 to 255, indicating required speed and direction
+int pwmLeftReq = 0;
+int pwmRightReq = 0;
+
+// PWM value used when turning in place (+- for each side, depending on direction)
+const int PWM_TURN = 80;
+
+const int PWM_MIN = 10;  // Values below PWM_MIN will be treated as 0
+const int PWM_MAX = 255; // Values above PWM_MAX will be reduced to PWM_MAX
 
 // Pins for connection to the left motor driver
 const int L_ENA = 4;
@@ -19,8 +38,6 @@ const int R_INT2 = 47;
 const int R_INT3 = 49;
 const int R_INT4 = 51;
 
-const int PWM_MAX = 255; // Maximum value for motor PWM
-
 #define model SharpIR::GP2Y0A21YK0F // Model ID for the IR sensors, used internally in SharpIR
 
 // Sets up the IR sensors, second parameter is the pin they're connected to
@@ -31,26 +48,6 @@ SharpIR IR_RL(model, A4); // Rear left
 SharpIR IR_FC(model, A5); // Front center
 
 int fr_avg, fl_avg, rl_avg, rr_avg, fc_avg; // Average IR sensor data; use this instead of the raw
-
-// Runs once on Arduino startup and is used for initialization
-void setup() {
-    // Sets all motor control pins to output mode
-    pinMode(L_ENA, OUTPUT);
-    pinMode(L_ENB, OUTPUT);
-    pinMode(L_INT1, OUTPUT);
-    pinMode(L_INT2, OUTPUT);
-    pinMode(L_INT3, OUTPUT);
-    pinMode(L_INT4, OUTPUT);
-    pinMode(R_ENA, OUTPUT);
-    pinMode(R_ENB, OUTPUT);
-    pinMode(R_INT1, OUTPUT);
-    pinMode(R_INT2, OUTPUT);
-    pinMode(R_INT3, OUTPUT);
-    pinMode(R_INT4, OUTPUT);
-
-    // Starts serial communication with the Arduino using baud rate 9600
-    Serial.begin(9600);
-}
 
 // Refreshes the distance array
 void updateDistance() {
@@ -64,7 +61,7 @@ void updateDistance() {
         ir_dist[3] += IR_RR.getDistance();
         ir_dist[4] += IR_FC.getDistance();
     }
-    
+
     fr_avg = ir_dist[0] / 5;
     fl_avg = ir_dist[1] / 5;
     rl_avg = ir_dist[2] / 5;
@@ -127,177 +124,147 @@ bool checkClear(int speed, int turn) {
     return true;
 }
 
-void stopRobot() {
-    digitalWrite(L_INT1, 0);
-    digitalWrite(L_INT2, 0);
-    digitalWrite(L_INT3, 0);
-    digitalWrite(L_INT4, 0);
-    
-    digitalWrite(R_INT1, 0);
-    digitalWrite(R_INT2, 0);
-    digitalWrite(R_INT3, 0);
-    digitalWrite(R_INT4, 0);
-    
-    if (DEBUG_MODE) {
-        Serial.println("Status: Robot stopped");
+// Updates the required PWM values every time a new ROS command comes in, but does not
+// update the values sent to the motors.
+void calc_pwm(const geometry_msgs::Twist &cmdVel) {
+    lastCommandTime = millis();
+
+    // For now, this interprets incoming cmdVel messages with m/s and rad/s values as
+    // percents of max PWM. Full forward is 1.00 m/s, reverse is -1.00 m/s, full left turn
+    // is 1.00 rad/s, full right turn is -1.00 rad/s, etc. Uses linear.x and angular.z.
+
+    pwmLeftReq = cmdVel.linear.x * 255;
+    pwmRightReq = cmdVel.linear.x * 255;
+
+    // If commanded to turn
+    if (cmdVel.angular.z != 0) {
+        if (cmdVel.angular.z > 0) {
+            // Left turn
+            pwmLeftReq = -PWM_TURN;
+            pwmRightReq = PWM_TURN;
+        } else {
+            // Right turn
+            pwmLeftReq = PWM_TURN;
+            pwmRightReq = -PWM_TURN;
+        }
     }
+
+    /* ------------- Constrains PWM values using PWM_MIN and PWM_MAX ------------ */
+    if (abs(pwmLeftReq) < PWM_MIN) {
+        pwmLeftReq = 0;
+    } else if (abs(pwmLeftReq) > PWM_MIN) {
+        pwmLeftReq = PWM_MAX;
+    }
+
+    if (abs(pwmRightReq) < PWM_MIN) {
+        pwmRightReq = 0;
+    } else if (abs(pwmRightReq) > PWM_MIN) {
+        pwmRightReq = PWM_MAX;
+    }
+    /* -------------------------------------------------------------------------- */
 }
 
-// Speed and turn should be in range [-100, 100], duration should be greater than 0 ms
-int moveRobot(float speed, float turn, int duration) {
-    if (DEBUG_MODE) {
-        // Prints the command to the controller
-        Serial.print("Status: Moving robot with command <speed: ");
-        Serial.print(speed);
-        Serial.print(", turn: ");
-        Serial.print(turn);
-        Serial.print(", duration: ");
-        Serial.print(duration);
-        Serial.println(">");
-    }
-
-    speed /= 100; // Adjusts the ranges from [-100, 100] to [-1.00, 1.00]
-    turn /= 100;
-
-    // Return with failure code if the robot is not clear to perform the requested movement
-    if (!checkClear(speed, turn)) {
-        return 1; // Indicates failure to the caller
-    }
-
-    // Converts the input percent values to PWM values, mapping range [-100, 100]
-    // to range [-255, 255]. i.e. 100 becomes 255, and -50 becomes -127.5.
-    speed *= PWM_MAX;
-    turn *= PWM_MAX;
-
-    // If turn is positive, turn to the left by making left motors slower and right motors faster;
-    // if turn is negative, turn to the right by making left motors faster and right motors slower.
-    int leftSpeed = speed - turn;
-    int rightSpeed = speed + turn;
-
-    // Constrains the speed to range [-255, 255], the maximum value for PWM
-    leftSpeed = constrain(leftSpeed, -PWM_MAX, PWM_MAX);
-    rightSpeed = constrain(rightSpeed, -PWM_MAX, PWM_MAX);
-
-    // Sends the speed to the motors
-    analogWrite(L_ENA, abs(leftSpeed));
-    analogWrite(L_ENB, abs(leftSpeed));
-    analogWrite(R_ENA, abs(rightSpeed));
-    analogWrite(R_ENB, abs(rightSpeed));
-
-    if (DEBUG_MODE) {
-        // Prints the speed values to the controller
-        Serial.print("Info: Left motor speed: ");
-        Serial.print(leftSpeed);
-        Serial.print("; right motor speed: ");
-        Serial.println(rightSpeed);
-    }
-
-    // Sets the int pins for the left motors
-    if (leftSpeed > 0) {
-        // Forward
+void set_pwm() {
+    /* -------------------- Sets the direction of the motors -------------------- */
+    if (pwmLeftReq > 0) {
+        // Left forward
         digitalWrite(L_INT1, 1);
         digitalWrite(L_INT2, 0);
         digitalWrite(L_INT3, 1);
         digitalWrite(L_INT4, 0);
-    } else {
-        // Backward
+    } else if (pwmLeftReq < 0) {
+        // Left reverse
         digitalWrite(L_INT1, 0);
         digitalWrite(L_INT2, 1);
         digitalWrite(L_INT3, 0);
         digitalWrite(L_INT4, 1);
+    } else {
+        // Left stop
+        digitalWrite(L_INT1, 0);
+        digitalWrite(L_INT2, 0);
+        digitalWrite(L_INT3, 0);
+        digitalWrite(L_INT4, 0);
     }
 
-    // Sets the int pins for the right motors
-    if (rightSpeed > 0) {
-        // Forward
+    if (pwmRightReq > 0) {
+        // Right forward
         digitalWrite(R_INT1, 1);
         digitalWrite(R_INT2, 0);
+        digitalWrite(R_INT3, 1);
+        digitalWrite(R_INT4, 0);
+    } else if (pwmRightReq < 0) {
+        // Right reverse
+        digitalWrite(R_INT1, 0);
+        digitalWrite(R_INT2, 1);
         digitalWrite(R_INT3, 0);
         digitalWrite(R_INT4, 1);
     } else {
-        // Backward
+        // Right stop
         digitalWrite(R_INT1, 0);
-        digitalWrite(R_INT2, 1);
-        digitalWrite(R_INT3, 1);
+        digitalWrite(R_INT2, 0);
+        digitalWrite(R_INT3, 0);
         digitalWrite(R_INT4, 0);
     }
+    /* -------------------------------------------------------------------------- */
 
-    unsigned long startTime = millis(); // Logs the time the instruction started
-    unsigned long currentTime;
+    // Writes the PWM values (which should already be constrained)
+    analogWrite(L_ENA, abs(pwmLeftReq));
+    analogWrite(L_ENB, abs(pwmLeftReq));
+    analogWrite(R_ENA, abs(pwmRightReq));
+    analogWrite(R_ENB, abs(pwmRightReq));
+}
 
-    while (true) {
-        currentTime = millis();
+// Sets a ROS subscriber to handle velocity commands with the calc_pwm function
+ros::Subscriber<geometry_msgs::Twist> subCmdVel("cmd_vel", &calc_pwm);
 
-        // If at least the desired duration has elapsed, exit the loop
-        if (currentTime - startTime >= duration) {
-            break;
-        }
+// Runs once on Arduino startup and is used for initialization
+void setup() {
+    // Sets all motor control pins to output mode
+    pinMode(L_ENA, OUTPUT);
+    pinMode(L_ENB, OUTPUT);
+    pinMode(L_INT1, OUTPUT);
+    pinMode(L_INT2, OUTPUT);
+    pinMode(L_INT3, OUTPUT);
+    pinMode(L_INT4, OUTPUT);
+    pinMode(R_ENA, OUTPUT);
+    pinMode(R_ENB, OUTPUT);
+    pinMode(R_INT1, OUTPUT);
+    pinMode(R_INT2, OUTPUT);
+    pinMode(R_INT3, OUTPUT);
+    pinMode(R_INT4, OUTPUT);
 
-        // If there is enough time left during the command to check the sensors
-        if (abs(currentTime - startTime - duration) > 100){
-            updateDistance();
-        }
-    }
+    // Turns off the motors by default
+    digitalWrite(L_INT1, 0);
+    digitalWrite(L_INT2, 0);
+    digitalWrite(L_INT3, 0);
+    digitalWrite(L_INT4, 0);
+    digitalWrite(R_INT1, 0);
+    digitalWrite(R_INT2, 0);
+    digitalWrite(R_INT3, 0);
+    digitalWrite(R_INT4, 0);
 
-    stopRobot();
-    return 0; // Indicates success to the caller
+    // Sets the initial PWM values to 0
+    analogWrite(L_ENA, 0);
+    analogWrite(L_ENB, 0);
+    analogWrite(R_ENA, 0);
+    analogWrite(R_ENB, 0);
+
+    // ROS setup
+    nh.getHardware()->setBaud(9600);
+    nh.initNode();
+    nh.subscribe(subCmdVel);
 }
 
 // Main loop, runs repeatedly while Arduino is on
 void loop() {
-    // Variables for input from the controlling program
-    int speedInput, turnInput, durationInput;
+    // Handles incoming ROS messages (which calls calc_pwm per the subCmdVel subscriber)
+    nh.spinOnce();
 
-    // Tracks if there has been a fatal error
-    bool error = false;
-
-    // Updates IR sensor data constantly while idle to prevent lag when checking before movement
-    updateDistance();
-
-    if (Serial.available() > 0) {
-        // Reads the incoming message
-        String message = Serial.readStringUntil('\n');
-
-        // Parses the parameters from the message; result stores the number of parameters found
-        int result = sscanf(message.c_str(), "%d %d %d", &speedInput, &turnInput, &durationInput);
-
-        // Errors if there were fewer than three numbers in the message
-        if (result < 3) {
-            Serial.println("Error: Too few parameters");
-            error = true;
-        }
-
-        // Errors if the speed is out of range
-        if (speedInput > 100 || speedInput < -100) {
-            Serial.println("Error: Speed must be in range [-100, 100]");
-            error = true;
-        }
-
-        // Errors if the turn is out of range
-        if (turnInput > 100 || turnInput < -100) {
-            Serial.println("Error: Turn must be in range [-100, 100]");
-            error = true;
-        }
-
-        // TODO: fix the duration maximum 
-        // TODO: min duration may need to be constrained based on sensor check time
-        // Errors if the duration is out of range
-        if (durationInput <= 0) {
-            Serial.println("Error: Duration must be in range [1, 32767] ms");
-            error = true;
-        }
-
-        // On error, sends a sentinel message to the controller and returns without moving the robot
-        if (error) {
-            Serial.println("END: Errors");
-            return;
-        }
-
-        result = moveRobot(speedInput, turnInput, durationInput);
-        if (result > 0) {
-            Serial.println("END: Failure");
-        } else {
-            Serial.println("END: Success");
-        }
+    // Stops the robot if it has been more than COMMAND_TIMEOUT ms since the last instruction
+    if (millis() - lastCommandTime > COMMAND_TIMEOUT) {
+        pwmLeftReq = 0;
+        pwmRightReq = 0;
     }
+
+    set_pwm();
 }
