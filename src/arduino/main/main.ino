@@ -144,7 +144,7 @@ void stopRobot() {
 }
 
 // Speed and turn should be in range [-100, 100], duration should be greater than 0 ms
-int moveRobot(int speed, int turn, int duration) {
+int moveRobot(float speed, float turn, int duration) {
     if (DEBUG_MODE) {
         // Prints the command to the controller
         Serial.print("Status: Moving robot with command <speed: ");
@@ -156,7 +156,6 @@ int moveRobot(int speed, int turn, int duration) {
         Serial.println(">");
     }
 
-    int leftSpeed, rightSpeed;
     speed /= 100; // Adjusts the ranges from [-100, 100] to [-1.00, 1.00]
     turn /= 100;
 
@@ -172,8 +171,8 @@ int moveRobot(int speed, int turn, int duration) {
 
     // If turn is positive, turn to the left by making left motors slower and right motors faster;
     // if turn is negative, turn to the right by making left motors faster and right motors slower.
-    leftSpeed = speed - turn;
-    rightSpeed = speed + turn;
+    int leftSpeed = speed - turn;
+    int rightSpeed = speed + turn;
 
     // Constrains the speed to range [-255, 255], the maximum value for PWM
     leftSpeed = constrain(leftSpeed, -PWM_MAX, PWM_MAX);
