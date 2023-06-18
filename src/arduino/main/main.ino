@@ -3,7 +3,11 @@
 #include <ros.h>
 
 const bool DEBUG_MODE = true;   // Enables additional printing over the serial connection
-const int CLEAR_THRESHOLD = 30; // Distance at which an object is considered to be blocking an IR sensor (cm)
+
+// Distance in cm at which an IR sensor is considered blocked when moving forward or backwards
+const int LINEAR_CLEAR_THRESHOLD = 25;
+// Distance in cm at which an IR sensor is considered blocked when turning
+const int TURN_CLEAR_THRESHOLD = 15;
 
 ros::NodeHandle nh;
 
@@ -16,7 +20,7 @@ const unsigned COMMAND_TIMEOUT = 200;
 int pwmLeftReq = 0;
 int pwmRightReq = 0;
 
-// PWM value used when turning in place (+- for each side, depending on direction)
+// PWM value used when turning in place (+/- for each side, depending on direction)
 const int PWM_TURN = 80;
 
 const int PWM_MIN = 10;  // Values below PWM_MIN will be treated as 0
@@ -47,26 +51,14 @@ SharpIR IR_RR(model, A3); // Rear right
 SharpIR IR_RL(model, A4); // Rear left
 SharpIR IR_FC(model, A5); // Front center
 
-int fr_avg, fl_avg, rl_avg, rr_avg, fc_avg; // Average IR sensor data; use this instead of the raw
+int fr_dist, fl_dist, rl_dist, rr_dist, fc_dist;
 
-// Refreshes the distance array
 void updateDistance() {
-    int ir_dist[5] = {0, 0, 0, 0, 0}; // Sum of 5 samples from each IR sensor [FR, FL, RR, RL, FC]
-
-    // Sums 5 samples from each IR sensor (this should take between 100 and 150 ms)
-    for (int i = 0; i < 5; i++) {
-        ir_dist[0] += IR_FR.getDistance();
-        ir_dist[1] += IR_FL.getDistance();
-        ir_dist[2] += IR_RL.getDistance();
-        ir_dist[3] += IR_RR.getDistance();
-        ir_dist[4] += IR_FC.getDistance();
-    }
-
-    fr_avg = ir_dist[0] / 5;
-    fl_avg = ir_dist[1] / 5;
-    rl_avg = ir_dist[2] / 5;
-    rr_avg = ir_dist[3] / 5;
-    fc_avg = ir_dist[4] / 5;
+    fr_dist = IR_FR.getDistance();
+    fl_dist = IR_FL.getDistance();
+    rl_dist = IR_RL.getDistance();
+    rr_dist = IR_RR.getDistance();
+    fc_dist = IR_FC.getDistance();
 
     if (DEBUG_MODE) {
         // Returns the sensor data for debug
@@ -84,39 +76,41 @@ void updateDistance() {
 }
 
 bool frontClear() {
-    return fr_avg > CLEAR_THRESHOLD &&
-           fl_avg > CLEAR_THRESHOLD &&
-           fc_avg > CLEAR_THRESHOLD;
+    return fr_dist > LINEAR_CLEAR_THRESHOLD &&
+           fl_dist > LINEAR_CLEAR_THRESHOLD &&
+           fc_dist > LINEAR_CLEAR_THRESHOLD;
 }
 
 bool backClear() {
-    return rl_avg > CLEAR_THRESHOLD &&
-           rr_avg > CLEAR_THRESHOLD;
+    return rl_dist > LINEAR_CLEAR_THRESHOLD &&
+           rr_dist > LINEAR_CLEAR_THRESHOLD;
 }
 
 bool areaClear() {
-    return fr_avg > CLEAR_THRESHOLD &&
-           fl_avg > CLEAR_THRESHOLD &&
-           rl_avg > CLEAR_THRESHOLD &&
-           rr_avg > CLEAR_THRESHOLD &&
-           fc_avg > CLEAR_THRESHOLD;
+    return fr_dist > TURN_CLEAR_THRESHOLD &&
+           fl_dist > TURN_CLEAR_THRESHOLD &&
+           rl_dist > TURN_CLEAR_THRESHOLD &&
+           rr_dist > TURN_CLEAR_THRESHOLD &&
+           fc_dist > TURN_CLEAR_THRESHOLD;
 }
 
-bool checkClear(int speed, int turn) {
-    // Aborts if robot is told to move forward and is not clear to do so
-    if (speed > 0 && !frontClear()) {
-        Serial.println("Abort: Front is not clear");
-        return false;
-    }
-
-    // Aborts if robot is told to move backwards and is not clear to do so
-    if (speed < 0 && !backClear()) {
-        Serial.println("Abort: Back is not clear");
-        return false;
-    }
-
-    // Aborts if robot is told to turn in place and the immediate area is not clear
-    if (turn != 0 && !areaClear()) {
+bool checkClear() {
+    // If not turning
+    if (pwmLeftReq == pwmRightReq) {
+        if (pwmLeftReq > 0 && !frontClear()) {
+            // If moving forward and front is not clear
+            Serial.println("Abort: Front is not clear");
+            return false;
+        } else if (pwmLeftReq < 0 && !backClear()) {
+            // If moving backwards and rear is not clear
+            Serial.println("Abort: Back is not clear");
+            return false;
+        }
+        
+        // Else PWM is 0 and the robot isn't moving
+        return true;
+    } else if (!areaClear()) {
+        // If turning and area is not clear
         Serial.println("Abort: Area is not clear");
         return false;
     }
@@ -264,6 +258,15 @@ void loop() {
     if (millis() - lastCommandTime > COMMAND_TIMEOUT) {
         pwmLeftReq = 0;
         pwmRightReq = 0;
+    } else {
+        // Checks if the robot is clear to move and stops it if it is not
+        
+        updateDistance();
+        
+        if (!checkClear()) {
+            pwmLeftReq = 0;
+            pwmRightReq = 0;
+        }
     }
 
     set_pwm();
