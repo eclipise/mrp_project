@@ -2,29 +2,30 @@
 #include <geometry_msgs/Twist.h>
 #include <ros.h>
 
-const bool DEBUG_MODE = true;   // Enables additional printing over the serial connection
+// Handles integration with ROS
+ros::NodeHandle nh;
+
+/* ---------------------------- Program constants --------------------------- */
+
+// Enables additional printing over the serial connection
+const bool DEBUG_MODE = true;
 
 // Distance in cm at which an IR sensor is considered blocked when moving forward or backwards
 const int LINEAR_CLEAR_THRESHOLD = 25;
 // Distance in cm at which an IR sensor is considered blocked when turning
 const int TURN_CLEAR_THRESHOLD = 15;
 
-ros::NodeHandle nh;
-
-unsigned long lastCommandTime = 0; // Timestamp in milliseconds of the last command
-
 // Time in milliseconds to continue the last command before stopping, in absence of a new command
 const unsigned COMMAND_TIMEOUT = 200;
 
-// These values are from -255 to 255, indicating required speed and direction
-int pwmLeftReq = 0;
-int pwmRightReq = 0;
-
+// Values below PWM_MIN will be treated as 0
+const int PWM_MIN = 10;
+// Values above PWM_MAX will be reduced to PWM_MAX
+const int PWM_MAX = 255;
 // PWM value used when turning in place (+/- for each side, depending on direction)
 const int PWM_TURN = 80;
 
-const int PWM_MIN = 10;  // Values below PWM_MIN will be treated as 0
-const int PWM_MAX = 255; // Values above PWM_MAX will be reduced to PWM_MAX
+/* ---------------------------- Arduino pin setup --------------------------- */
 
 // Pins for connection to the left motor driver
 const int L_ENA = 4;
@@ -42,7 +43,8 @@ const int R_INT2 = 47;
 const int R_INT3 = 49;
 const int R_INT4 = 51;
 
-#define model SharpIR::GP2Y0A21YK0F // Model ID for the IR sensors, used internally in SharpIR
+// Model ID for the IR sensors, used internally in SharpIR
+#define model SharpIR::GP2Y0A21YK0F
 
 // Sets up the IR sensors, second parameter is the pin they're connected to
 SharpIR IR_FL(model, A1); // Front left
@@ -51,7 +53,19 @@ SharpIR IR_RR(model, A3); // Rear right
 SharpIR IR_RL(model, A4); // Rear left
 SharpIR IR_FC(model, A5); // Front center
 
+/* ------------------------------ Program data ------------------------------ */
+
+// These values are from -255 to 255, indicating required speed and direction
+int pwmLeftReq = 0;
+int pwmRightReq = 0;
+
+// Timestamp in milliseconds of the last command
+unsigned long lastCommandTime = 0;
+
+// IR sensor data
 int fr_dist, fl_dist, rl_dist, rr_dist, fc_dist;
+
+/* -------------------------------------------------------------------------- */
 
 void updateDistance() {
     fr_dist = IR_FR.getDistance();
@@ -106,7 +120,7 @@ bool checkClear() {
             Serial.println("Abort: Back is not clear");
             return false;
         }
-        
+
         // Else PWM is 0 and the robot isn't moving
         return true;
     } else if (!areaClear()) {
@@ -260,9 +274,9 @@ void loop() {
         pwmRightReq = 0;
     } else {
         // Checks if the robot is clear to move and stops it if it is not
-        
+
         updateDistance();
-        
+
         if (!checkClear()) {
             pwmLeftReq = 0;
             pwmRightReq = 0;
