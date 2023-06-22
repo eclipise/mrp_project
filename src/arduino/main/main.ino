@@ -1,6 +1,6 @@
-#include <SharpIR.h>
-#include <geometry_msgs/Twist.h>
 #include <ros.h>
+#include <geometry_msgs/Twist.h>
+#include <SharpIR.h>
 
 // Handles integration with ROS
 ros::NodeHandle nh;
