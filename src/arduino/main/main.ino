@@ -1,7 +1,23 @@
 #include <SharpIR.h>
 
-const bool DEBUG_MODE = true; // Enables additional printing over the serial connection
+// Togglable Debug Modes
+const bool DEBUG_MODE = true;
+const bool DEBUG_MODE_IR = true; // Enables additional printing over the serial connection for IR sensors
+const bool DEBUG_MODE_ENCODER = false; // Enables additional printing over the serial connection for motor encoders
+
+// Defines constants
 const int CLEAR_THRESHOLD = 30; // Distance at which an object is considered to be blocking an IR sensor (cm)
+const int PWM_MAX = 255; // Maximum value for motor PWM
+const int PULSES_PER_REV = 40;
+const float WHEEL_DIAMETER = 6.0; // Diameter of the wheel in inches
+const float GEARBOX_RATIO = 15;  // Gear ratio of the motor (speced at 15:1 -> use 15)
+const float ENCODER_UPDATE_TIME = 0.1;  // Update time interval in seconds
+
+// Define mutliplier weights for each motor for speed matching
+float FL_multiplier = 1.0;
+float RL_multiplier = 1.0;
+float FR_multiplier = 1.0;
+float RR_multiplier = 1.0;
 
 // Pins for connection to the left motor driver
 const int L_ENA = 4;
@@ -19,7 +35,11 @@ const int R_INT2 = 47;
 const int R_INT3 = 49;
 const int R_INT4 = 51;
 
-const int PWM_MAX = 255; // Maximum value for motor PWM
+//Pins for motor encoders (use interrupt pins)
+const int FL_Encoder = 18;   // Front left Encoder signal pin
+const int RL_Encoder = 19;   // Rear left Encoder signal pin
+const int FR_Encoder = 20;   // Front right Encoder signal pin
+const int RR_Encoder = 21;   // Rear right Encoder signal pin
 
 #define model SharpIR::GP2Y0A21YK0F // Model ID for the IR sensors, used internally in SharpIR
 
@@ -31,6 +51,14 @@ SharpIR IR_RL(model, A4); // Rear left
 SharpIR IR_FC(model, A5); // Front center
 
 int fr_avg, fl_avg, rl_avg, rr_avg, fc_avg; // Average IR sensor data; use this instead of the raw
+
+// sets up pulse counters for each motor encoder
+unsigned long currentTime = millis();
+volatile unsigned int FL_pulseCount = 0;
+volatile unsigned int RL_pulseCount = 0;
+volatile unsigned int FR_pulseCount = 0;
+volatile unsigned int RR_pulseCount = 0;
+unsigned long prevTime = 0; // Initialize prevTime
 
 // Runs once on Arduino startup and is used for initialization
 void setup() {
@@ -48,8 +76,20 @@ void setup() {
     pinMode(R_INT3, OUTPUT);
     pinMode(R_INT4, OUTPUT);
 
+    //Sets all motor encoder pins to interrupts
+    attachInterrupt(digitalPinToInterrupt(FL_Encoder), countFL, RISING);
+    attachInterrupt(digitalPinToInterrupt(RL_Encoder), countRL, RISING);
+    attachInterrupt(digitalPinToInterrupt(FR_Encoder), countFR, RISING);
+    attachInterrupt(digitalPinToInterrupt(RR_Encoder), countRR, RISING);
+
+    //Initialize prevTime
+    prevTime = millis();
+
     // Starts serial communication with the Arduino using baud rate 9600
     Serial.begin(9600);
+
+    // Prints initialization message
+    Serial.println("Initialization complete.");
 }
 
 // Refreshes the distance array
@@ -71,7 +111,7 @@ void updateDistance() {
     rr_avg = ir_dist[3] / 5;
     fc_avg = ir_dist[4] / 5;
 
-    if (DEBUG_MODE) {
+    if (DEBUG_MODE_IR) {
         // Returns the sensor data for debug
         Serial.print("Info: fr_dist: ");
         Serial.print(fr_avg);
@@ -236,12 +276,91 @@ int moveRobot(float speed, float turn, int duration) {
         // If there is enough time left during the command to check the sensors
         if (abs(currentTime - startTime - duration) > 100){
             updateDistance();
+            printEncoderReadings();
         }
     }
 
     stopRobot();
     return 0; // Indicates success to the caller
 }
+
+// Function to count pulses for the front left motor encoder
+void countFL() {
+        FL_pulseCount++;
+}
+
+// Function to count pulses for the rear left motor encoder
+void countRL() {
+        RL_pulseCount++;
+}
+
+// Function to count pulses for the front right motor encoder
+void countFR() {
+        FR_pulseCount++;
+}
+
+// Function to count pulses for the rear right motor encoder
+void countRR() {
+        RR_pulseCount++;
+}
+
+// Function to print motor encoder readings
+void printEncoderReadings() {
+    unsigned long currentTime = millis(); // Current time
+    unsigned long elapsedTime = currentTime - prevTime; // Elapsed time since previous measurement
+
+    if (elapsedTime >= 1000) { // Perform calculations once every second
+      // Calculate RPM for each motor
+      float FL_rotations = FL_pulseCount / (float)PULSES_PER_REV;
+      float RL_rotations = RL_pulseCount / (float)PULSES_PER_REV;
+      float FR_rotations = FR_pulseCount / (float)PULSES_PER_REV;
+      float RR_rotations = RR_pulseCount / (float)PULSES_PER_REV;
+        
+      // Calculate distance for each motor
+      float FL_distance = FL_rotations * PI * WHEEL_DIAMETER / GEARBOX_RATIO;
+      float RL_distance = RL_rotations * PI * WHEEL_DIAMETER / GEARBOX_RATIO;
+      float FR_distance = FR_rotations * PI * WHEEL_DIAMETER / GEARBOX_RATIO;
+      float RR_distance = RR_rotations * PI * WHEEL_DIAMETER / GEARBOX_RATIO;
+
+      // Calculate RPM for each motor
+      float FL_rpm = (FL_rotations * 60.0 / (elapsedTime / 1000.0))/ GEARBOX_RATIO;
+      float RL_rpm = (RL_rotations * 60.0 / (elapsedTime / 1000.0))/ GEARBOX_RATIO;
+      float FR_rpm = (FR_rotations * 60.0 / (elapsedTime / 1000.0))/ GEARBOX_RATIO;
+      float RR_rpm = (RR_rotations * 60.0 / (elapsedTime / 1000.0))/ GEARBOX_RATIO;
+     
+        // Print motor encoder readings
+      if (DEBUG_MODE_ENCODER) {
+        Serial.print("Encoder Readings:");
+        Serial.print("FL - RPM: ");
+        Serial.print(FL_rpm);
+        Serial.print("  Distance: ");
+        Serial.print(FL_distance);
+        Serial.print(" in   ");
+        Serial.print("RL - RPM: ");
+        Serial.print(RL_rpm);
+        Serial.print("  Distance: ");
+        Serial.print(RL_distance);
+        Serial.print(" in   ");
+        Serial.print("FR - RPM: ");
+        Serial.print(FR_rpm);
+        Serial.print("  Distance: ");
+        Serial.print(FR_distance);
+        Serial.print(" in   ");
+        Serial.print("RR - RPM: ");
+        Serial.print(RR_rpm);
+        Serial.print("  Distance: ");
+        Serial.print(RR_distance);
+        Serial.println(" in   ");
+      }
+
+      // Reset the pulse counts after printing the readings
+      FL_pulseCount = 0;
+      RL_pulseCount = 0;
+      FR_pulseCount = 0;
+      RR_pulseCount = 0;
+      prevTime = currentTime;
+    }
+  }
 
 // Main loop, runs repeatedly while Arduino is on
 void loop() {
@@ -253,6 +372,8 @@ void loop() {
 
     // Updates IR sensor data constantly while idle to prevent lag when checking before movement
     updateDistance();
+
+    printEncoderReadings();
 
     if (Serial.available() > 0) {
         // Reads the incoming message
