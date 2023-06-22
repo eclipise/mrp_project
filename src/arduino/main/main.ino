@@ -77,15 +77,15 @@ void updateDistance() {
     if (DEBUG_MODE) {
         // Returns the sensor data for debug
         Serial.print("Info: fr_dist: ");
-        Serial.print(fr_avg);
+        Serial.print(fr_dist);
         Serial.print("; fl_dist: ");
-        Serial.print(fl_avg);
+        Serial.print(fl_dist);
         Serial.print("; rl_dist: ");
-        Serial.print(rl_avg);
+        Serial.print(rl_dist);
         Serial.print("; rr_dist: ");
-        Serial.print(rr_avg);
+        Serial.print(rr_dist);
         Serial.print("; fc_dist: ");
-        Serial.println(fc_avg);
+        Serial.println(fc_dist);
     }
 }
 
