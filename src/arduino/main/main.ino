@@ -19,11 +19,11 @@ const int TURN_CLEAR_THRESHOLD = 15;
 const unsigned COMMAND_TIMEOUT = 200;
 
 // Values below PWM_MIN will be treated as 0
-const int PWM_MIN = 10;
+const int PWM_MIN = 24; // one less than 10% power
 // Values above PWM_MAX will be reduced to PWM_MAX
-const int PWM_MAX = 255;
+const int PWM_MAX = 50; // 20% power
 // PWM value used when turning in place (+/- for each side, depending on direction)
-const int PWM_TURN = 80;
+const int PWM_TURN = 75; // 30% power
 
 /* ---------------------------- Arduino pin setup --------------------------- */
 
@@ -258,7 +258,6 @@ void setup() {
     analogWrite(R_ENB, 0);
 
     // ROS setup
-    nh.getHardware()->setBaud(9600);
     nh.initNode();
     nh.subscribe(subCmdVel);
 }
