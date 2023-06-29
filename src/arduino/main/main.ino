@@ -1,5 +1,6 @@
 #include <ros.h>
 #include <geometry_msgs/Twist.h>
+#include <std_msgs/String.h>
 #include <SharpIR.h>
 
 // Handles integration with ROS
@@ -8,12 +9,12 @@ ros::NodeHandle nh;
 /* ---------------------------- Program constants --------------------------- */
 
 // Enables additional printing over the serial connection
-const bool DEBUG_MODE = true;
+const bool DEBUG_MODE = false;
 
 // Distance in cm at which an IR sensor is considered blocked when moving forward or backwards
-const int LINEAR_CLEAR_THRESHOLD = 25;
+const int LINEAR_CLEAR_THRESHOLD = -1;
 // Distance in cm at which an IR sensor is considered blocked when turning
-const int TURN_CLEAR_THRESHOLD = 15;
+const int TURN_CLEAR_THRESHOLD = -1;
 
 // Time in milliseconds to continue the last command before stopping, in absence of a new command
 const unsigned COMMAND_TIMEOUT = 200;
@@ -113,11 +114,11 @@ bool checkClear() {
     if (pwmLeftReq == pwmRightReq) {
         if (pwmLeftReq > 0 && !frontClear()) {
             // If moving forward and front is not clear
-            Serial.println("Abort: Front is not clear");
+            // Serial.println("Abort: Front is not clear");
             return false;
         } else if (pwmLeftReq < 0 && !backClear()) {
             // If moving backwards and rear is not clear
-            Serial.println("Abort: Back is not clear");
+            // Serial.println("Abort: Back is not clear");
             return false;
         }
 
@@ -125,7 +126,7 @@ bool checkClear() {
         return true;
     } else if (!areaClear()) {
         // If turning and area is not clear
-        Serial.println("Abort: Area is not clear");
+        // Serial.println("Abort: Area is not clear");
         return false;
     }
 
@@ -135,6 +136,9 @@ bool checkClear() {
 // Updates the required PWM values every time a new ROS command comes in, but does not
 // update the values sent to the motors.
 void calc_pwm(const geometry_msgs::Twist &cmdVel) {
+    msg.data = "calculating pwm";
+    chatter.publish(&msg);
+
     lastCommandTime = millis();
 
     // For now, this interprets incoming cmdVel messages with m/s and rad/s values as
@@ -173,6 +177,9 @@ void calc_pwm(const geometry_msgs::Twist &cmdVel) {
 }
 
 void set_pwm() {
+    msg.data = "setting pwm";
+    chatter.publish(&msg);
+    
     /* -------------------- Sets the direction of the motors -------------------- */
     if (pwmLeftReq > 0) {
         // Left forward
@@ -225,6 +232,9 @@ void set_pwm() {
 // Sets a ROS subscriber to handle velocity commands with the calc_pwm function
 ros::Subscriber<geometry_msgs::Twist> subCmdVel("cmd_vel", &calc_pwm);
 
+std_msgs::String msg;
+ros::Publisher chatter("chatter", &msg);
+
 // Runs once on Arduino startup and is used for initialization
 void setup() {
     // Sets all motor control pins to output mode
@@ -269,6 +279,9 @@ void loop() {
 
     // Stops the robot if it has been more than COMMAND_TIMEOUT ms since the last instruction
     if (millis() - lastCommandTime > COMMAND_TIMEOUT) {
+        msg.data = "timeout";
+        chatter.publish(&msg);
+
         pwmLeftReq = 0;
         pwmRightReq = 0;
     } else {
@@ -277,6 +290,9 @@ void loop() {
         updateDistance();
 
         if (!checkClear()) {
+            msg.data = "blocked";
+            chatter.publish(&msg);
+
             pwmLeftReq = 0;
             pwmRightReq = 0;
         }
