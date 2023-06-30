@@ -6,23 +6,6 @@
 // Base component necessary to make this program a ROS node
 ros::NodeHandle nh;
 
-/* --------------------- ROS publishers and message data -------------------- */
-
-std_msgs::String msg;
-ros::Publisher chatter("chatter", &msg);
-
-std_msgs::UInt16 FL_ticks;
-ros::Publisher FL_Pub("FL_ticks", &FL_ticks);
-
-std_msgs::UInt16 FR_ticks;
-ros::Publisher FR_Pub("FR_ticks", &FR_ticks);
-
-std_msgs::UInt16 RR_ticks;
-ros::Publisher RR_Pub("RR_ticks", &RR_ticks);
-
-std_msgs::UInt16 RL_ticks;
-ros::Publisher RL_Pub("RL_ticks", &RL_ticks);
-
 /* ---------------------------- Program constants --------------------------- */
 
 // Enables additional printing over the serial connection
@@ -79,6 +62,23 @@ SharpIR IR_FR(model, A2); // Front right
 SharpIR IR_RR(model, A3); // Rear right
 SharpIR IR_RL(model, A4); // Rear left
 SharpIR IR_FC(model, A5); // Front center
+
+/* --------------------- ROS publishers and message data -------------------- */
+
+std_msgs::String msg;
+ros::Publisher chatter("chatter", &msg);
+
+std_msgs::UInt16 FL_ticks;
+ros::Publisher FL_Pub("FL_ticks", &FL_ticks);
+
+std_msgs::UInt16 FR_ticks;
+ros::Publisher FR_Pub("FR_ticks", &FR_ticks);
+
+std_msgs::UInt16 RR_ticks;
+ros::Publisher RR_Pub("RR_ticks", &RR_ticks);
+
+std_msgs::UInt16 RL_ticks;
+ros::Publisher RL_Pub("RL_ticks", &RL_ticks);
 
 /* ------------------------------ Program data ------------------------------ */
 
