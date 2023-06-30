@@ -95,7 +95,7 @@ unsigned long lastEncTime = 0;
 // IR sensor data
 int fr_dist, fl_dist, rl_dist, rr_dist, fc_dist;
 
-/* -------------------------------------------------------------------------- */
+/* -------------------------------- Encoders -------------------------------- */
 
 void FL_tick() {
     FL_ticks.data++;
@@ -112,6 +112,8 @@ void RR_tick() {
 void RL_tick() {
     RL_ticks.data++;
 }
+
+/* ------------------------------- IR Sensors ------------------------------- */
 
 void updateDistance() {
     fr_dist = IR_FR.getDistance();
@@ -174,6 +176,8 @@ bool checkClear() {
 
     return true;
 }
+
+/* ------------------------------ Motor Control ----------------------------- */
 
 // Updates the required PWM values every time a new ROS command comes in, but does not
 // update the values sent to the motors.
@@ -270,6 +274,8 @@ void set_pwm() {
     analogWrite(R_ENA, abs(pwmRightReq));
     analogWrite(R_ENB, abs(pwmRightReq));
 }
+
+/* -------------------------------------------------------------------------- */
 
 // Sets a ROS subscriber to handle velocity commands with the calc_pwm function
 ros::Subscriber<geometry_msgs::Twist> CmdVel_Sub("cmd_vel", &calc_pwm);
