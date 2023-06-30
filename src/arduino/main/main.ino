@@ -9,6 +9,18 @@ ros::NodeHandle nh;
 std_msgs::String msg;
 ros::Publisher chatter("chatter", &msg);
 
+std_msgs::UInt16 FL_ticks;
+ros::Publisher FL_Pub("FL_ticks", &FL_ticks);
+
+std_msgs::UInt16 FR_ticks;
+ros::Publisher FR_Pub("FR_ticks", &FR_ticks);
+
+std_msgs::UInt16 RR_ticks;
+ros::Publisher RR_Pub("RR_ticks", &RR_ticks);
+
+std_msgs::UInt16 RL_ticks;
+ros::Publisher RL_Pub("RL_ticks", &RL_ticks);
+
 /* ---------------------------- Program constants --------------------------- */
 
 // Enables additional printing over the serial connection
@@ -29,6 +41,9 @@ const int PWM_MAX = 50; // 20% power
 // PWM value used when turning in place (+/- for each side, depending on direction)
 const int PWM_TURN = 75; // 30% power
 
+// Rate in ms at which encoder ticks are published
+const int ENC_POLL = 100;
+
 /* ---------------------------- Arduino pin setup --------------------------- */
 
 // Pins for connection to the left motor driver
@@ -46,6 +61,12 @@ const int R_INT1 = 45;
 const int R_INT2 = 47;
 const int R_INT3 = 49;
 const int R_INT4 = 51;
+
+// Pins for the encoders
+const int FL_ENC = 18;
+const int RL_ENC = 19;
+const int FR_ENC = 20;
+const int RR_ENC = 21;
 
 // Model ID for the IR sensors, used internally in SharpIR
 #define model SharpIR::GP2Y0A21YK0F
@@ -66,10 +87,29 @@ int pwmRightReq = 0;
 // Timestamp in milliseconds of the last command
 unsigned long lastCommandTime = 0;
 
+// Timestamp in milliseconds of the last publish of encoder data
+unsigned long lastEncTime = 0; 
+
 // IR sensor data
 int fr_dist, fl_dist, rl_dist, rr_dist, fc_dist;
 
 /* -------------------------------------------------------------------------- */
+
+void FL_tick() {
+    FL_ticks.data++;
+}
+
+void FR_tick() {
+    FR_ticks.data++;
+}
+
+void RR_tick() {
+    RR_ticks.data++;
+}
+
+void RL_tick() {
+    RL_ticks.data++;
+}
 
 void updateDistance() {
     fr_dist = IR_FR.getDistance();
@@ -117,11 +157,9 @@ bool checkClear() {
     if (pwmLeftReq == pwmRightReq) {
         if (pwmLeftReq > 0 && !frontClear()) {
             // If moving forward and front is not clear
-            // Serial.println("Abort: Front is not clear");
             return false;
         } else if (pwmLeftReq < 0 && !backClear()) {
             // If moving backwards and rear is not clear
-            // Serial.println("Abort: Back is not clear");
             return false;
         }
 
@@ -129,7 +167,6 @@ bool checkClear() {
         return true;
     } else if (!areaClear()) {
         // If turning and area is not clear
-        // Serial.println("Abort: Area is not clear");
         return false;
     }
 
@@ -233,7 +270,7 @@ void set_pwm() {
 }
 
 // Sets a ROS subscriber to handle velocity commands with the calc_pwm function
-ros::Subscriber<geometry_msgs::Twist> subCmdVel("cmd_vel", &calc_pwm);
+ros::Subscriber<geometry_msgs::Twist> CmdVel_Sub("cmd_vel", &calc_pwm);
 
 // Runs once on Arduino startup and is used for initialization
 void setup() {
@@ -250,6 +287,12 @@ void setup() {
     pinMode(R_INT2, OUTPUT);
     pinMode(R_INT3, OUTPUT);
     pinMode(R_INT4, OUTPUT);
+
+    // Attaches interrupts to the encoder pins, calls given functions on rising edge
+    attachInterrupt(digitalPinToInterrupt(FL_ENC), FL_tick, RISING);
+    attachInterrupt(digitalPinToInterrupt(FR_ENC), FR_tick, RISING);
+    attachInterrupt(digitalPinToInterrupt(RR_ENC), RR_tick, RISING);
+    attachInterrupt(digitalPinToInterrupt(RL_ENC), RL_tick, RISING);
 
     // Turns off the motors by default
     digitalWrite(L_INT1, 0);
@@ -269,17 +312,23 @@ void setup() {
 
     // ROS setup
     nh.initNode();
-    nh.subscribe(subCmdVel);
     nh.advertise(chatter);
+    nh.advertise(FL_Pub);
+    nh.advertise(FR_Pub);
+    nh.advertise(RR_Pub);
+    nh.advertise(RL_Pub);
+    nh.subscribe(CmdVel_Sub);
 }
 
 // Main loop, runs repeatedly while Arduino is on
 void loop() {
-    // Handles incoming ROS messages (which calls calc_pwm per the subCmdVel subscriber)
+    // Handles incoming ROS messages (which calls calc_pwm per the CmdVel_Sub subscriber)
     nh.spinOnce();
 
+    unsigned long currentTime = millis();
+
     // Stops the robot if it has been more than COMMAND_TIMEOUT ms since the last instruction
-    if (millis() - lastCommandTime > COMMAND_TIMEOUT) {
+    if (currentTime - lastCommandTime > COMMAND_TIMEOUT) {
         msg.data = "timeout";
         chatter.publish(&msg);
 
@@ -297,6 +346,16 @@ void loop() {
             pwmLeftReq = 0;
             pwmRightReq = 0;
         }
+    }
+
+    // If it has been at least ENC_POLL ms since the last encoder publish, publish
+    if (currentTime - lastEncTime > ENC_POLL) {
+        lastEncTime = currentTime;
+
+        FL_Pub.publish(&FL_ticks);
+        FR_Pub.publish(&FR_ticks);
+        RR_Pub.publish(&RR_ticks);
+        RL_Pub.publish(&RL_ticks);
     }
 
     set_pwm();
