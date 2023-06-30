@@ -3,8 +3,10 @@
 #include <std_msgs/String.h>
 #include <SharpIR.h>
 
-// Handles integration with ROS
+// Base component necessary to make this program a ROS node
 ros::NodeHandle nh;
+
+/* --------------------- ROS publishers and message data -------------------- */
 
 std_msgs::String msg;
 ros::Publisher chatter("chatter", &msg);
