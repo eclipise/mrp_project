@@ -6,6 +6,9 @@
 // Handles integration with ROS
 ros::NodeHandle nh;
 
+std_msgs::String msg;
+ros::Publisher chatter("chatter", &msg);
+
 /* ---------------------------- Program constants --------------------------- */
 
 // Enables additional printing over the serial connection
@@ -232,9 +235,6 @@ void set_pwm() {
 // Sets a ROS subscriber to handle velocity commands with the calc_pwm function
 ros::Subscriber<geometry_msgs::Twist> subCmdVel("cmd_vel", &calc_pwm);
 
-std_msgs::String msg;
-ros::Publisher chatter("chatter", &msg);
-
 // Runs once on Arduino startup and is used for initialization
 void setup() {
     // Sets all motor control pins to output mode
@@ -270,6 +270,7 @@ void setup() {
     // ROS setup
     nh.initNode();
     nh.subscribe(subCmdVel);
+    nh.advertise(chatter);
 }
 
 // Main loop, runs repeatedly while Arduino is on
