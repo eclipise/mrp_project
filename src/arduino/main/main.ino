@@ -33,8 +33,8 @@ const int ENC_POLL = 100;
 /* ---------------------------- Arduino pin setup --------------------------- */
 
 // Pins for connection to the left motor driver
-const int L_ENA = 4;
-const int L_ENB = 5;
+const int L_ENA = 5;
+const int L_ENB = 6;
 const int L_INT1 = 44;
 const int L_INT2 = 46;
 const int L_INT3 = 48;
