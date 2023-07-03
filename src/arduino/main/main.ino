@@ -1,6 +1,7 @@
 #include <ros.h>
 #include <geometry_msgs/Twist.h>
 #include <std_msgs/String.h>
+#include <std_msgs/UInt16.h>
 #include <SharpIR.h>
 
 // Base component necessary to make this program a ROS node
