@@ -252,14 +252,14 @@ void set_pwm() {
         // Right forward
         digitalWrite(R_INT1, 1);
         digitalWrite(R_INT2, 0);
-        digitalWrite(R_INT3, 1);
-        digitalWrite(R_INT4, 0);
+        digitalWrite(R_INT3, 0);
+        digitalWrite(R_INT4, 1);
     } else if (pwmRightReq < 0) {
         // Right reverse
         digitalWrite(R_INT1, 0);
         digitalWrite(R_INT2, 1);
-        digitalWrite(R_INT3, 0);
-        digitalWrite(R_INT4, 1);
+        digitalWrite(R_INT3, 1);
+        digitalWrite(R_INT4, 0);
     } else {
         // Right stop
         digitalWrite(R_INT1, 0);
