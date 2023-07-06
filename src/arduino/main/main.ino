@@ -12,12 +12,14 @@ ros::NodeHandle nh;
 // Enables additional printing over the serial connection
 const bool DEBUG_MODE = false;
 
-// Distance in cm at which an IR sensor is considered blocked when moving forward or backwards
+// Distance in cm at which an IR sensor is considered blocked when moving
+// forward or backwards
 const int LINEAR_CLEAR_THRESHOLD = -1;
 // Distance in cm at which an IR sensor is considered blocked when turning
 const int TURN_CLEAR_THRESHOLD = -1;
 
-// Time in milliseconds to continue the last command before stopping, in absence of a new command
+// Time in milliseconds to continue the last command before stopping, in absence
+// of a new command
 const unsigned COMMAND_TIMEOUT = 200;
 
 // Values below PWM_MIN will be treated as 0
@@ -180,17 +182,18 @@ bool checkClear() {
 
 /* ------------------------------ Motor Control ----------------------------- */
 
-// Updates the required PWM values every time a new ROS command comes in, but does not
-// update the values sent to the motors.
+// Updates the required PWM values every time a new ROS command comes in, but
+// does not update the values sent to the motors.
 void calc_pwm(const geometry_msgs::Twist &cmdVel) {
     msg.data = "calculating pwm";
     chatter.publish(&msg);
 
     lastCommandTime = millis();
 
-    // For now, this interprets incoming cmdVel messages with m/s and rad/s values as
-    // percents of max PWM. Full forward is 1.00 m/s, reverse is -1.00 m/s, full left turn
-    // is 1.00 rad/s, full right turn is -1.00 rad/s, etc. Uses linear.x and angular.z.
+    // For now, this interprets incoming cmdVel messages with m/s and rad/s
+    // values as percents of max PWM. Full forward is 1.00 m/s, reverse is -1.00
+    // m/s, full left turn is 1.00 rad/s, full right turn is -1.00 rad/s, etc.
+    // Uses linear.x and angular.z.
 
     pwmLeftReq = cmdVel.linear.x * 255;
     pwmRightReq = cmdVel.linear.x * 255;
@@ -297,7 +300,7 @@ void setup() {
     pinMode(R_INT3, OUTPUT);
     pinMode(R_INT4, OUTPUT);
 
-    // Attaches interrupts to the encoder pins, calls given functions on rising edge
+    // Attaches interrupts to encoder pins, calls given functions on rising edge
     attachInterrupt(digitalPinToInterrupt(FL_ENC), FL_tick, RISING);
     attachInterrupt(digitalPinToInterrupt(FR_ENC), FR_tick, RISING);
     attachInterrupt(digitalPinToInterrupt(RR_ENC), RR_tick, RISING);
@@ -331,12 +334,14 @@ void setup() {
 
 // Main loop, runs repeatedly while Arduino is on
 void loop() {
-    // Handles incoming ROS messages (which calls calc_pwm per the CmdVel_Sub subscriber)
+    // Handles incoming ROS messages (which calls calc_pwm per the CmdVel_Sub
+    // subscriber)
     nh.spinOnce();
 
     unsigned long currentTime = millis();
 
-    // Stops the robot if it has been more than COMMAND_TIMEOUT ms since the last instruction
+    // Stops the robot if it has been more than COMMAND_TIMEOUT ms since the
+    // last instruction
     if (currentTime - lastCommandTime > COMMAND_TIMEOUT) {
         msg.data = "timeout";
         chatter.publish(&msg);
@@ -357,7 +362,8 @@ void loop() {
         }
     }
 
-    // If it has been at least ENC_POLL ms since the last encoder publish, publish
+    // If it has been at least ENC_POLL ms since the last encoder publish,
+    // publish
     if (currentTime - lastEncTime > ENC_POLL) {
         lastEncTime = currentTime;
 
