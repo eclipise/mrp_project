@@ -26,7 +26,7 @@ const unsigned COMMAND_TIMEOUT = 200;
 const int PWM_MIN = 24; // one less than 10% power
 // Values above PWM_MAX will be reduced to PWM_MAX
 const int PWM_MAX = 50; // 20% power
-// PWM value used when turning in place (+/- for each side, depending on direction)
+// PWM value used when turning in place (+/- for each side, based on direction)
 const int PWM_TURN = 75; // 30% power
 
 // Rate in ms at which encoder ticks are published
@@ -89,6 +89,12 @@ ros::Publisher RL_Pub("RL_ticks", &RL_ticks);
 int pwmLeftReq = 0;
 int pwmRightReq = 0;
 
+// Tracks whether the wheels on each side have been told to move forward or
+// backwards, which is only used for the encoders. Updated when PWM is set,
+// remains unchanged when robot is ordered to stop.
+bool left_moving_forward = true;
+bool right_moving_forward = true;
+
 // Timestamp in milliseconds of the last command
 unsigned long lastCommandTime = 0;
 
@@ -100,20 +106,42 @@ int fr_dist, fl_dist, rl_dist, rr_dist, fc_dist;
 
 /* -------------------------------- Encoders -------------------------------- */
 
+// Since the encoders only register ticks, not direction, these tick functions
+// fudge the direction by looking at whether the robot was last told to move
+// forward or backwards. This will usually work even for drift after the robot
+// has been told to stop, but won't catch movement in a different direction than
+// expected.
+
 void FL_tick() {
-    FL_ticks.data++;
+    if (left_moving_forward) {
+        FL_ticks.data++;
+    } else {
+        FL_ticks.data--;
+    }
 }
 
 void FR_tick() {
-    FR_ticks.data++;
+    if (left_moving_forward) {
+        FR_ticks.data++;
+    } else {
+        FR_ticks.data--;
+    }
 }
 
 void RR_tick() {
-    RR_ticks.data++;
+    if (right_moving_forward) {
+        RR_ticks.data++;
+    } else {
+        RR_ticks.data--;
+    }
 }
 
 void RL_tick() {
-    RL_ticks.data++;
+    if (right_moving_forward) {
+        RL_ticks.data++;
+    } else {
+        RL_ticks.data--;
+    }
 }
 
 /* ------------------------------- IR Sensors ------------------------------- */
@@ -241,18 +269,24 @@ void set_pwm() {
         digitalWrite(L_INT2, 0);
         digitalWrite(L_INT3, 1);
         digitalWrite(L_INT4, 0);
+
+        left_moving_forward = true;
     } else if (pwmLeftReq < 0) {
         // Left reverse
         digitalWrite(L_INT1, 0);
         digitalWrite(L_INT2, 1);
         digitalWrite(L_INT3, 0);
         digitalWrite(L_INT4, 1);
+
+        left_moving_forward = false;
     } else {
         // Left stop
         digitalWrite(L_INT1, 0);
         digitalWrite(L_INT2, 0);
         digitalWrite(L_INT3, 0);
         digitalWrite(L_INT4, 0);
+
+        // left_moving_forward remains at its last value to account for drift
     }
 
     if (pwmRightReq > 0) {
@@ -261,18 +295,24 @@ void set_pwm() {
         digitalWrite(R_INT2, 0);
         digitalWrite(R_INT3, 0);
         digitalWrite(R_INT4, 1);
+
+        right_moving_forward = true;
     } else if (pwmRightReq < 0) {
         // Right reverse
         digitalWrite(R_INT1, 0);
         digitalWrite(R_INT2, 1);
         digitalWrite(R_INT3, 1);
         digitalWrite(R_INT4, 0);
+
+        right_moving_forward = false;
     } else {
         // Right stop
         digitalWrite(R_INT1, 0);
         digitalWrite(R_INT2, 0);
         digitalWrite(R_INT3, 0);
         digitalWrite(R_INT4, 0);
+
+        // right_moving_forward remains at its last value to account for drift
     }
     /* -------------------------------------------------------------------------- */
 
