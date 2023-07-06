@@ -212,16 +212,20 @@ void calc_pwm(const geometry_msgs::Twist &cmdVel) {
     }
 
     /* ------------- Constrains PWM values using PWM_MIN and PWM_MAX ------------ */
+    // Constrain left
     if (abs(pwmLeftReq) < PWM_MIN) {
         pwmLeftReq = 0;
-    } else if (abs(pwmLeftReq) > PWM_MIN) {
-        pwmLeftReq = PWM_MAX;
+    } else if (abs(pwmLeftReq) > PWM_MAX) {
+        // Sets the PWM to the max value, but with the same sign
+        pwmLeftReq = PWM_MAX * ((pwmLeftReq > 0) - (pwmLeftReq < 0));
     }
 
+    // Constrain right
     if (abs(pwmRightReq) < PWM_MIN) {
         pwmRightReq = 0;
-    } else if (abs(pwmRightReq) > PWM_MIN) {
-        pwmRightReq = PWM_MAX;
+    } else if (abs(pwmRightReq) > PWM_MAX) {
+        // Sets the PWM to the max value, but with the same sign
+        pwmRightReq = PWM_MAX * ((pwmRightReq > 0) - (pwmRightReq < 0));
     }
     /* -------------------------------------------------------------------------- */
 }
