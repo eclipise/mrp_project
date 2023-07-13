@@ -1,7 +1,7 @@
 #include <ros.h>
 #include <geometry_msgs/Twist.h>
 #include <std_msgs/String.h>
-#include <std_msgs/UInt16.h>
+#include <std_msgs/Int16.h>
 #include <SharpIR.h>
 
 // Base component necessary to make this program a ROS node
@@ -31,6 +31,9 @@ const int PWM_TURN = 75; // 30% power
 
 // Rate in ms at which encoder ticks are published
 const int ENC_POLL = 100;
+
+// Min/max value of the tick count for under- and overflow
+const unsigned ENC_BOUND = 32767;
 
 /* ---------------------------- Arduino pin setup --------------------------- */
 
@@ -71,16 +74,16 @@ SharpIR IR_FC(model, A5); // Front center
 std_msgs::String msg;
 ros::Publisher chatter("chatter", &msg);
 
-std_msgs::UInt16 FL_ticks;
+std_msgs::Int16 FL_ticks;
 ros::Publisher FL_Pub("FL_ticks", &FL_ticks);
 
-std_msgs::UInt16 FR_ticks;
+std_msgs::Int16 FR_ticks;
 ros::Publisher FR_Pub("FR_ticks", &FR_ticks);
 
-std_msgs::UInt16 RR_ticks;
+std_msgs::Int16 RR_ticks;
 ros::Publisher RR_Pub("RR_ticks", &RR_ticks);
 
-std_msgs::UInt16 RL_ticks;
+std_msgs::Int16 RL_ticks;
 ros::Publisher RL_Pub("RL_ticks", &RL_ticks);
 
 /* ------------------------------ Program data ------------------------------ */
@@ -112,7 +115,17 @@ int fr_dist, fl_dist, rl_dist, rr_dist, fc_dist;
 // has been told to stop, but won't catch movement in a different direction than
 // expected.
 
+// When the tick count approaches an over- or underflow, it is re-centered to 0.
+// This prevents continuous wrapping if, for example, the robot is rocking in
+// place and the tick count is at an extreme. That would be problematic because
+// the downstream velocity calculation ignores ticks from intervals when it
+// wraps and would never yield a value.
+
 void FL_tick() {
+    if (abs(FL_ticks.data) == ENC_BOUND) {
+        FL_ticks.data = 0;
+    }
+    
     if (left_moving_forward) {
         FL_ticks.data++;
     } else {
@@ -121,6 +134,10 @@ void FL_tick() {
 }
 
 void FR_tick() {
+    if (abs(FR_ticks.data) == ENC_BOUND) {
+        FR_ticks.data = 0;
+    }
+
     if (left_moving_forward) {
         FR_ticks.data++;
     } else {
@@ -129,6 +146,10 @@ void FR_tick() {
 }
 
 void RR_tick() {
+    if (abs(RR_ticks.data) == ENC_BOUND) {
+        RR_ticks.data = 0;
+    }
+
     if (right_moving_forward) {
         RR_ticks.data++;
     } else {
@@ -137,6 +158,10 @@ void RR_tick() {
 }
 
 void RL_tick() {
+    if (abs(RL_ticks.data) == ENC_BOUND) {
+        RL_ticks.data = 0;
+    }
+
     if (right_moving_forward) {
         RL_ticks.data++;
     } else {
