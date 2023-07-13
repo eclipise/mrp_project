@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rosserial_python
   teleop_twist_keyboard
+  tf
 )
 
 ## System dependencies are found with CMake's conventions
