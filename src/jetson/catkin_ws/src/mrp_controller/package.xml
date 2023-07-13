@@ -55,8 +55,6 @@
   <depend>tf</depend>
   <build_depend>nav_msgs</build_depend>
   <build_depend>std_msgs</build_depend>
-  <build_export_depend>rosserial_python</build_export_depend>
-  <build_export_depend>teleop_twist_keyboard</build_export_depend>
 
 
 
