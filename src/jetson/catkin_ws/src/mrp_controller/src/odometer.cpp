@@ -124,9 +124,9 @@ int main(int argc, char* argv[]) {
 
     odom_pub = nh.advertise<nav_msgs::Odometry>("odom", 100);
 
-    // This should be set to at least double the encoder poll rate on the
+    // This should be set to at least equal to the encoder poll rate on the
     // Arduino to ensure that all measurements are performed on fresh data.
-    ros::Rate rate(0.25); // measured in seconds (4hz) 
+    ros::Rate rate(0.2); // measured in seconds (5hz) 
 
     while (ros::ok()) {
         update_odom();

@@ -18,10 +18,6 @@ const int LINEAR_CLEAR_THRESHOLD = -1;
 // Distance in cm at which an IR sensor is considered blocked when turning
 const int TURN_CLEAR_THRESHOLD = -1;
 
-// Time in milliseconds to continue the last command before stopping, in absence
-// of a new command
-const unsigned COMMAND_TIMEOUT = 200;
-
 // Values below PWM_MIN will be treated as 0
 const int PWM_MIN = 24; // one less than 10% power
 // Values above PWM_MAX will be reduced to PWM_MAX
@@ -29,8 +25,13 @@ const int PWM_MAX = 50; // 20% power
 // PWM value used when turning in place (+/- for each side, based on direction)
 const int PWM_TURN = 75; // 30% power
 
+// Time in milliseconds to continue the last command before stopping, in absence
+// of a new command
+const unsigned COMMAND_TIMEOUT = 200;
+// Time in milliseconds between checking if the IR sensors are blocked
+const unsigned IR_POLL = 200;
 // Rate in ms at which encoder ticks are published
-const int ENC_POLL = 100;
+const unsigned ENC_POLL = 200;
 
 // Min/max value of the tick count for under- and overflow
 const unsigned ENC_BOUND = 32767;
@@ -100,7 +101,8 @@ bool right_moving_forward = true;
 
 // Timestamp in milliseconds of the last command
 unsigned long lastCommandTime = 0;
-
+// Timestamp in milliseconds of the last IR check
+unsigned long lastIRTime = 0;
 // Timestamp in milliseconds of the last publish of encoder data
 unsigned long lastEncTime = 0; 
 
@@ -353,7 +355,7 @@ void set_pwm() {
 // Sets a ROS subscriber to handle velocity commands with the calc_pwm function
 ros::Subscriber<geometry_msgs::Twist> CmdVel_Sub("cmd_vel", &calc_pwm);
 
-// Runs once on Arduino startup and is used for initialization
+// Runs once on Arduino startup
 void setup() {
     // Sets all motor control pins to output mode
     pinMode(L_ENA, OUTPUT);
@@ -417,29 +419,31 @@ void loop() {
 
         pwmLeftReq = 0;
         pwmRightReq = 0;
-    } else {
-        // Checks if the robot is clear to move and stops it if it is not
+    } else { 
+        // Checks the IR sensors if it has been at least IR_POLL ms since the
+        // last check
+        if (currentTime - lastIRTime > IR_POLL) {
+            updateDistance();
 
-        updateDistance();
+            if (!checkClear()) {
+                msg.data = "blocked";
+                chatter.publish(&msg);
 
-        if (!checkClear()) {
-            msg.data = "blocked";
-            chatter.publish(&msg);
-
-            pwmLeftReq = 0;
-            pwmRightReq = 0;
+                pwmLeftReq = 0;
+                pwmRightReq = 0;
+            }
         }
-    }
 
-    // If it has been at least ENC_POLL ms since the last encoder publish,
-    // publish
-    if (currentTime - lastEncTime > ENC_POLL) {
-        lastEncTime = currentTime;
+        // Publishes encoder data if it has been at least ENC_POLL ms since the
+        // last publish
+        if (currentTime - lastEncTime > ENC_POLL) {
+            lastEncTime = currentTime;
 
-        FL_Pub.publish(&FL_ticks);
-        FR_Pub.publish(&FR_ticks);
-        RR_Pub.publish(&RR_ticks);
-        RL_Pub.publish(&RL_ticks);
+            FL_Pub.publish(&FL_ticks);
+            FR_Pub.publish(&FR_ticks);
+            RR_Pub.publish(&RR_ticks);
+            RL_Pub.publish(&RL_ticks);
+        }
     }
 
     set_pwm();
