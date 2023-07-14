@@ -25,7 +25,8 @@ const int PWM_TURN = 75; // 30% power
 // Time in milliseconds to continue the last command before stopping, in absence
 // of a new command
 const unsigned COMMAND_TIMEOUT = 200;
-// Time in milliseconds between checking if the IR sensors are blocked
+// Time in milliseconds between checking if the IR sensors are blocked. Should
+// always be greater than 30 ms to prevent an internal delay in SharpIR.
 const unsigned IR_POLL = 200;
 // Rate in ms at which encoder ticks are published
 const unsigned ENC_POLL = 200;
