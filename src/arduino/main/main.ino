@@ -9,9 +9,6 @@ ros::NodeHandle nh;
 
 /* ---------------------------- Program constants --------------------------- */
 
-// Enables additional printing over the serial connection
-const bool DEBUG_MODE = false;
-
 // Distance in cm at which an IR sensor is considered blocked when moving
 // forward or backwards
 const int LINEAR_CLEAR_THRESHOLD = -1;
@@ -179,20 +176,6 @@ void updateDistance() {
     rl_dist = IR_RL.getDistance();
     rr_dist = IR_RR.getDistance();
     fc_dist = IR_FC.getDistance();
-
-    if (DEBUG_MODE) {
-        // Returns the sensor data for debug
-        Serial.print("Info: fr_dist: ");
-        Serial.print(fr_dist);
-        Serial.print("; fl_dist: ");
-        Serial.print(fl_dist);
-        Serial.print("; rl_dist: ");
-        Serial.print(rl_dist);
-        Serial.print("; rr_dist: ");
-        Serial.print(rr_dist);
-        Serial.print("; fc_dist: ");
-        Serial.println(fc_dist);
-    }
 }
 
 bool frontClear() {
