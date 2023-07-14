@@ -1,2 +1,1 @@
 Flask==2.0.3
-pyserial==3.5

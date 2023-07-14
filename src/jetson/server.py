@@ -1,8 +1,6 @@
 from flask import Flask, request, Response
-from arduino_controller import ArduinoController
 
 app = Flask(__name__)
-arduino_controller = ArduinoController()
 
 @app.get("/")
 def base_handler():
@@ -19,30 +17,9 @@ def move_handler():
         values = (values[0], values[1])
     else:
         return {"errors": values[2]}, 400 # 400: bad request
-    
-    # Communicates with the Arduino if one was found, falls back on debug printing otherwise
-    if arduino_controller.connected:
-        # Sends the movement command to the Arduino and gets its response
-        arduino_response = arduino_controller.send_movement(values)
-    else:
-        print("Server received:", values)
-
-        arduino_response = ["SAMPLE", 
-                            f"Status: Moving robot with command <speed: {values[0]}, turn: {values[1]}>",
-                            "Info: Left motor speed: 255; right motor speed: 255",
-                            "Status: Robot stopped",
-                            "END: Success"]
 
     # Sends the Arduino's response to the client
-    return {"arduino response": arduino_response}, 200
-
-@app.get("/status")
-def status_handler():
-    status = {
-        "battery": 95
-    }
-
-    return status
+    return Response(status=200)
 
 def validate_movement(message: dict) -> tuple:
     # Checks if the required keys are present
@@ -82,8 +59,5 @@ def validate_movement(message: dict) -> tuple:
     return (speed, turn, errors)
 
 
-if __name__ == "__main__":
-    if not arduino_controller.connected:
-        print("Running server without Arduino connection.")
-    
+if __name__ == "__main__":    
     app.run(debug=False, host="0.0.0.0")
