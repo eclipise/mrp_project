@@ -15,10 +15,10 @@ def move_handler():
     values = validate_movement(message)
 
     # If there are no errors, remove that from the tuple; else send the errors
-    if len(values[3]) == 0:
-        values = (values[0], values[1], values[2])
+    if len(values[2]) == 0:
+        values = (values[0], values[1])
     else:
-        return {"errors": values[3]}, 400 # 400: bad request
+        return {"errors": values[2]}, 400 # 400: bad request
     
     # Communicates with the Arduino if one was found, falls back on debug printing otherwise
     if arduino_controller.connected:
@@ -28,7 +28,7 @@ def move_handler():
         print("Server received:", values)
 
         arduino_response = ["SAMPLE", 
-                            f"Status: Moving robot with command <speed: {values[0]}, turn: {values[1]}, duration: {values[2]}>",
+                            f"Status: Moving robot with command <speed: {values[0]}, turn: {values[1]}>",
                             "Info: Left motor speed: 255; right motor speed: 255",
                             "Status: Robot stopped",
                             "END: Success"]
@@ -48,7 +48,6 @@ def validate_movement(message: dict) -> tuple:
     # Checks if the required keys are present
     speed_present = "speed" in message.keys()
     turn_present = "turn" in message.keys()
-    duration_present = "duration" in message.keys()
     
     # #######################################################################
     # If a key is not present, appends the relevant error to return message.
@@ -76,21 +75,11 @@ def validate_movement(message: dict) -> tuple:
     else:
         turn = 0 # dummy value for return
         errors.append("Missing key: 'turn'")
-    
-    
-    if duration_present:
-        duration = int(message["duration"])
-        
-        if not duration > 0:
-            errors.append(f"Duration <{duration}> is out of range (inf, 0)")
-    else:
-        duration = 0 # dummy value for return
-        errors.append("Missing key: 'duration'")
 
     # #######################################################################
 
     # Returns values as ints and either an error string or an empty string on success
-    return (speed, turn, duration, errors)
+    return (speed, turn, errors)
 
 
 if __name__ == "__main__":
