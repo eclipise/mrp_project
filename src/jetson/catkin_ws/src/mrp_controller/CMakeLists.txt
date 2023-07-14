@@ -9,6 +9,7 @@ project(mrp_controller)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   roscpp
+  rospy
   rosserial_python
   teleop_twist_keyboard
   tf
