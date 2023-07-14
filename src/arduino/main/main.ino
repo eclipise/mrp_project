@@ -98,7 +98,7 @@ bool left_moving_forward = true;
 bool right_moving_forward = true;
 
 // Timestamp in milliseconds of the last command
-unsigned long lastCommandTime = 0;
+unsigned long lastCmdTime = 0;
 // Timestamp in milliseconds of the last IR check
 unsigned long lastIRTime = 0;
 // Timestamp in milliseconds of the last publish of encoder data
@@ -227,7 +227,7 @@ void calc_pwm(const geometry_msgs::Twist &cmdVel) {
     msg.data = "calculating pwm";
     chatter.publish(&msg);
 
-    lastCommandTime = millis();
+    lastCmdTime = millis();
 
     // For now, this interprets incoming cmdVel messages with m/s and rad/s
     // values as percents of max PWM. Full forward is 1.00 m/s, reverse is -1.00
@@ -397,7 +397,7 @@ void loop() {
 
     // Stops the robot if it has been more than COMMAND_TIMEOUT ms since the
     // last instruction
-    if (currentTime - lastCommandTime > COMMAND_TIMEOUT) {
+    if (currentTime - lastCmdTime > COMMAND_TIMEOUT) {
         msg.data = "timeout";
         chatter.publish(&msg);
 
@@ -407,6 +407,8 @@ void loop() {
         // Checks the IR sensors if it has been at least IR_POLL ms since the
         // last check
         if (currentTime - lastIRTime > IR_POLL) {
+            lastIRTime = currentTime;
+            
             updateDistance();
 
             if (!checkClear()) {
