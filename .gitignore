@@ -2,10 +2,6 @@ __pycache__
 
 # Visual Studio Code
 .vscode/* 
-!.vscode/settings.json 
-!.vscode/tasks.json 
-!.vscode/launch.json 
-!.vscode/extensions.json 
 .history
 
 # catkin build and devel files are tied to location and must be rebuilt if moved
