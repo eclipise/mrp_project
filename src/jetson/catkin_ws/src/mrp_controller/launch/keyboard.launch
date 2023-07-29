@@ -1,9 +1,0 @@
-<launch>
-    <node name="serial_node" pkg="rosserial_python" type="serial_node.py">
-        <param name="port" value="/dev/ttyACM0"/>
-    </node>
-
-    <node name="teleop_node" pkg="teleop_twist_keyboard" type="teleop_twist_keyboard.py" output="screen"/>
-
-    <node name="odometer_node" pkg="mrp_controller" type="odometer"/>
-</launch>

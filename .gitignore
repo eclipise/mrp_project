@@ -4,6 +4,8 @@ __pycache__
 .vscode/* 
 .history
 
-# catkin build and devel files are tied to location and must be rebuilt if moved
-src/jetson/catkin_ws/build
-src/jetson/catkin_ws/devel
+# colcon build, install, and log files should be regenerated when 
+# building the workspace on a new computer
+build
+install
+log
