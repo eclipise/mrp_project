@@ -1,7 +1,7 @@
 __pycache__
 
 # Visual Studio Code
-.vscode/* 
+.vscode 
 .history
 
 # colcon build, install, and log files should be regenerated when 
