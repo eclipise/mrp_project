@@ -24,9 +24,6 @@ unsigned COMMAND_TIMEOUT = 200;
 // always be greater than 30 ms to prevent an internal delay in SharpIR.
 const unsigned IR_POLL = 200;
 
-// Min/max value of the tick count for under- and overflow
-const unsigned ENC_BOUND = 32767;
-
 /* ---------------------------- Arduino pin setup --------------------------- */
 
 // Pins for connection to the left motor driver
@@ -90,10 +87,6 @@ volatile long fl_ticks, fr_ticks, rr_ticks, rl_ticks;
 /* -------------------------------- Encoders -------------------------------- */
 
 void FL_tick() {
-    if (abs(fl_ticks) == ENC_BOUND) {
-        fl_ticks = 0;
-    }
-
     if (fl_moving_forward) {
         fl_ticks++;
     } else {
@@ -102,10 +95,6 @@ void FL_tick() {
 }
 
 void FR_tick() {
-    if (abs(fr_ticks) == ENC_BOUND) {
-        fr_ticks = 0;
-    }
-
     if (fr_moving_forward) {
         fr_ticks++;
     } else {
@@ -114,10 +103,6 @@ void FR_tick() {
 }
 
 void RR_tick() {
-    if (abs(rr_ticks) == ENC_BOUND) {
-        rr_ticks = 0;
-    }
-
     if (rr_moving_forward) {
         rr_ticks++;
     } else {
@@ -126,10 +111,6 @@ void RR_tick() {
 }
 
 void RL_tick() {
-    if (abs(rl_ticks) == ENC_BOUND) {
-        rl_ticks = 0;
-    }
-
     if (rl_moving_forward) {
         rl_ticks++;
     } else {
