@@ -51,7 +51,7 @@ const int RR_ENC = 21;
 // Model ID for the IR sensors, used internally in SharpIR
 #define model SharpIR::GP2Y0A21YK0F
 
-// Sets up the IR sensors, second parameter is the pin they're connected to
+// Sets up the IR sensors, second argument is the pin they're connected to
 SharpIR IR_FL(model, A1); // Front left
 SharpIR IR_FR(model, A2); // Front right
 SharpIR IR_RR(model, A3); // Rear right
@@ -59,10 +59,6 @@ SharpIR IR_RL(model, A4); // Rear left
 SharpIR IR_FC(model, A5); // Front center
 
 /* ------------------------------ Program data ------------------------------ */
-
-// These values are from -255 to 255, indicating required speed and direction
-int pwmLeftReq = 0;
-int pwmRightReq = 0;
 
 // Tracks whether the motors have been told to move forward or backwards, which
 // is only used for the encoders. Updated when PWM is set, remains unchanged
@@ -76,8 +72,6 @@ bool rl_moving_forward = true;
 unsigned long lastCmdTime = 0;
 // Timestamp in milliseconds of the last IR check
 unsigned long lastIRTime = 0;
-// Timestamp in milliseconds of the last publish of encoder data
-unsigned long lastEncTime = 0;
 
 // IR sensor data
 int fl_dist, fr_dist, rr_dist, rl_dist, fc_dist;
