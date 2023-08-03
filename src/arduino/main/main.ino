@@ -335,6 +335,14 @@ void run_command(char cmd_sel, int arg1, int arg2, int arg3, int arg4) {
         PWM_TURN = arg3;
         break;
 
+    // Reset encoders
+    case 'r':
+        fl_ticks = 0;
+        fr_ticks = 0;
+        rl_ticks = 0;
+        rr_ticks = 0;
+        break;
+
     default:
         Serial.println("Invalid command.");
         break;
