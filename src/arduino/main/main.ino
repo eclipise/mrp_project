@@ -80,6 +80,12 @@ volatile long fl_ticks, fr_ticks, rr_ticks, rl_ticks;
 
 /* -------------------------------- Encoders -------------------------------- */
 
+// Since the encoders only register ticks, not direction, these tick functions
+// fudge the direction by looking at whether the robot was last told to move
+// forward or backwards. This will usually work even for drift after the robot
+// has been told to stop, but won't catch movement in a different direction than
+// expected.
+
 void FL_tick() {
     if (fl_moving_forward) {
         fl_ticks++;
@@ -279,9 +285,9 @@ void run_command(char cmd_sel, int arg1, int arg2, int arg3, int arg4) {
         Serial.print(" ");
         Serial.print(fr_ticks);
         Serial.print(" ");
-        Serial.print(rr_ticks);
+        Serial.print(rl_ticks);
         Serial.print(" ");
-        Serial.println(rl_ticks);
+        Serial.println(rr_ticks);
         break;
 
     // Set motor pwm
