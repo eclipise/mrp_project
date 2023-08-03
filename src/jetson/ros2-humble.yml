@@ -1,0 +1,64 @@
+config:
+  user.user-data: |
+    #cloud-config
+    # Add the ROS 2 sources
+    apt:
+      sources:
+        ros2:
+          source: "deb [arch=amd64] http://repo.ros2.org/ubuntu/main jammy main"
+          keyid: C1CF 6E31 E6BA DE88 68B1 72B4 F42E D6FB AB17 C654
+    package_upgrade: true
+    packages:
+      # dev
+      - vim
+      - silversearcher-ag
+      # ROS 2 dev
+      - locales
+      - curl
+      - gnupg
+      - lsb-release
+      - build-essential
+      - cmake
+      - git
+      - python3-argcomplete
+      - python3-colcon-common-extensions
+      - python3-flake8
+      - python3-flake8-blind-except
+      - python3-flake8-builtins
+      - python3-flake8-class-newline
+      - python3-flake8-comprehensions
+      - python3-flake8-deprecated
+      - python3-flake8-docstrings
+      - python3-flake8-import-order
+      - python3-flake8-quotes
+      - python3-pip
+      - python3-pytest
+      - python3-pytest-cov
+      - python3-pytest-repeat
+      - python3-pytest-rerunfailures
+      - python3-rosdep
+      - python3-setuptools
+      - python3-vcstool
+      - wget
+      # ROS 2 packages
+      - ros-humble-ros-core
+    runcmd:
+      # System setup
+      - "locale-gen en_US en_US.UTF-8"
+      - "update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8"
+      - "export LANG=en_US.UTF-8"
+      #
+      # Fetch ROS 2 sources
+      - [su, ubuntu, -c, "mkdir -p /home/ubuntu/ros2_ws/src"]
+      - [su, ubuntu, -c, "wget https://raw.githubusercontent.com/ros2/ros2/master/ros2.repos -O /home/ubuntu/ros2_ws/ros2.repos"]
+      - [su, ubuntu, -c, "vcs import /home/ubuntu/ros2_ws/src < /home/ubuntu/ros2_ws/ros2.repos"]
+      #
+      # Install deps
+      - [su, ubuntu, -c, "sudo rosdep init"]
+      - [su, ubuntu, -c, "rosdep update"]
+      - [su, ubuntu, -c, "rosdep install --from-paths /home/ubuntu/ros2_ws/src --ignore-src -y --skip-keys 'fastcdr rti-connext-dds-6.0.1 urdfdom_headers gazebo_ros_pkgs' --rosdistro humble"]
+    final_message: "ROS 2 Humble Hawksbill dev container ready!"    
+description: "A profile to automatically a ROS 2 Humble dev container."
+devices: {}
+name: ros2-humble
+used_by: []
