@@ -3,24 +3,26 @@
 
     <xacro:arg name="sim_mode" default="false"/>
 
-    <!-- TODO: update measurements -->
     <!-- These are in meters and kilograms -->
     <xacro:property name="chassis_length" value="0.4"/>
     <xacro:property name="chassis_width" value="0.35"/>
-    <xacro:property name="chassis_height" value="0.25"/>
-    <xacro:property name="chassis_mass" value="30"/>
+    <xacro:property name="chassis_height" value="0.28"/>
+    <xacro:property name="chassis_mass" value="30"/> <!-- TODO -->
     <xacro:property name="wheel_radius" value="0.0762"/>
-    <xacro:property name="wheel_thickness" value="0.05"/>
-    <xacro:property name="wheel_mass" value="0.5"/>
-    <xacro:property name="wheel_offset_x" value="0.1"/>
-    <xacro:property name="wheel_offset_y" value="0.175"/>
-    <xacro:property name="wheel_offset_z" value="0"/>
+    <xacro:property name="wheel_thickness" value="0.0381"/>
+    <xacro:property name="wheel_mass" value="1.5"/> <!-- TODO -->
+    <!-- From bottom center -->
+    <xacro:property name="wheel_offset_x" value="0.0875"/>
+    <xacro:property name="wheel_offset_y" value="0.1877"/>
+    <xacro:property name="wheel_offset_z" value="0.0508"/>
+
     <xacro:property name="lidar_radius" value="0.035"/>
     <xacro:property name="lidar_thickness" value="0.02"/>
-    <xacro:property name="lidar_mass" value="0.5"/>
-    <xacro:property name="lidar_offset_x" value="0.3"/>
+    <xacro:property name="lidar_mass" value="0.5"/> 
+    <!-- From bottom rear --> <!-- TODO -->
+    <xacro:property name="lidar_offset_x" value="0.3246"/>
     <xacro:property name="lidar_offset_y" value="0"/>
-    <xacro:property name="lidar_offset_z" value="0.25"/>
+    <xacro:property name="lidar_offset_z" value="0.31175"/>
 
     <xacro:include filename="mrp_core.xacro"/>
 
