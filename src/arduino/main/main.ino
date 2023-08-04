@@ -24,6 +24,12 @@ unsigned COMMAND_TIMEOUT = 200;
 // always be greater than 30 ms to prevent an internal delay in SharpIR.
 const unsigned IR_POLL = 200;
 
+// ACS712 ammeter constants
+const float AMMETER_VOLTAGE = 5.0;
+const float AMMETER_SENSITIVITY = 0.066;
+const int AMMETER_MAX = 1024; // Ammeter raw value is in range [0, 1024]
+const float MIN_CURRENT = 0.25; // Values below this are treated as 0 amps
+
 /* ---------------------------- Arduino pin setup --------------------------- */
 
 // Pins for connection to the left motor driver
@@ -57,6 +63,9 @@ SharpIR IR_FR(model, A2); // Front right
 SharpIR IR_RR(model, A3); // Rear right
 SharpIR IR_RL(model, A4); // Rear left
 SharpIR IR_FC(model, A5); // Front center
+
+// Pin for the ammeter
+#define AMMETER_PIN A0
 
 /* ------------------------------ Program data ------------------------------ */
 
@@ -275,6 +284,20 @@ void set_pwm(int fl_pwm, int fr_pwm, int rr_pwm, int rl_pwm) {
     analogWrite(L_ENB, abs(rl_pwm));
 }
 
+/* --------------------------------- Ammeter -------------------------------- */
+
+float readAmmeter() {
+    int raw_data = analogRead(AMMETER_PIN);
+    float voltage = (raw_data / float(AMMETER_MAX)) * AMMETER_VOLTAGE;
+    float current = (voltage - AMMETER_VOLTAGE / 2) / AMMETER_SENSITIVITY;
+
+    if (abs(current) < MIN_CURRENT) {
+        current = 0;
+    }
+    
+    return current;
+}
+
 /* ----------------------------- Program control ---------------------------- */
 
 void run_command(char cmd_sel, int arg1, int arg2, int arg3, int arg4) {
@@ -341,6 +364,11 @@ void run_command(char cmd_sel, int arg1, int arg2, int arg3, int arg4) {
         fr_ticks = 0;
         rl_ticks = 0;
         rr_ticks = 0;
+        break;
+
+    // Read ammeter
+    case 'a':
+        Serial.println(readAmmeter());
         break;
 
     default:
