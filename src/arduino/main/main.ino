@@ -2,7 +2,7 @@
 
 /* ----------------------------- Program config ----------------------------- */
 
-const int BAUD_RATE = 57600;
+#define BAUD_RATE 57600
 
 // Distance in cm at which an IR sensor is considered blocked when moving
 // forward or backwards
@@ -27,16 +27,16 @@ const unsigned IR_POLL = 200;
 /* ---------------------------- Arduino pin setup --------------------------- */
 
 // Pins for connection to the left motor driver
-const int L_ENA = 5;
-const int L_ENB = 6;
+const int L_ENA = 5; // FL
+const int L_ENB = 6; // RL
 const int L_INT1 = 44;
 const int L_INT2 = 46;
 const int L_INT3 = 48;
 const int L_INT4 = 50;
 
 // Pins for connection to the right motor driver
-const int R_ENA = 2;
-const int R_ENB = 3;
+const int R_ENA = 2; // FR
+const int R_ENB = 3; // RR
 const int R_INT1 = 45;
 const int R_INT2 = 47;
 const int R_INT3 = 49;
@@ -209,28 +209,28 @@ void set_pwm(int fl_pwm, int fr_pwm, int rr_pwm, int rl_pwm) {
         // fl_moving_forward remains at its last value to account for drift
     }
 
-    analogWrite(L_ENA, fl_pwm);
+    analogWrite(L_ENA, abs(fl_pwm));
 
     // Front right
     if (fr_pwm > 0) {
         // Forward
-        digitalWrite(L_INT3, 1);
-        digitalWrite(L_INT4, 0);
+        digitalWrite(R_INT1, 1);
+        digitalWrite(R_INT2, 0);
 
         fr_moving_forward = true;
     } else if (fr_pwm < 0) {
         // Backward
-        digitalWrite(R_INT3, 1);
-        digitalWrite(R_INT4, 0);
+        digitalWrite(R_INT1, 0);
+        digitalWrite(R_INT2, 1);
 
         fr_moving_forward = false;
     } else {
         // Stop
-        digitalWrite(L_INT3, 0);
-        digitalWrite(L_INT4, 0);
+        digitalWrite(R_INT1, 0);
+        digitalWrite(R_INT2, 0);
     }
 
-    analogWrite(L_ENB, fr_pwm);
+    analogWrite(R_ENA, abs(fr_pwm));
 
     // Rear right
     if (rr_pwm > 0) {
@@ -241,8 +241,8 @@ void set_pwm(int fl_pwm, int fr_pwm, int rr_pwm, int rl_pwm) {
         rr_moving_forward = true;
     } else if (rr_pwm < 0) {
         // Backward
-        digitalWrite(L_INT3, 0);
-        digitalWrite(L_INT4, 1);
+        digitalWrite(R_INT3, 1);
+        digitalWrite(R_INT4, 0);
 
         rr_moving_forward = false;
     } else {
@@ -251,28 +251,28 @@ void set_pwm(int fl_pwm, int fr_pwm, int rr_pwm, int rl_pwm) {
         digitalWrite(R_INT4, 0);
     }
 
-    analogWrite(R_ENA, rr_pwm);
+    analogWrite(R_ENB, abs(rr_pwm));
 
     // Rear left
     if (rl_pwm > 0) {
         // Forward
-        digitalWrite(R_INT1, 1);
-        digitalWrite(R_INT2, 0);
+        digitalWrite(L_INT3, 1);
+        digitalWrite(L_INT4, 0);
 
         rl_moving_forward = true;
     } else if (rl_pwm < 0) {
         // Backward
-        digitalWrite(R_INT1, 0);
-        digitalWrite(R_INT2, 1);
+        digitalWrite(L_INT3, 0);
+        digitalWrite(L_INT4, 1);
 
         rl_moving_forward = false;
     } else {
         // Stop
-        digitalWrite(R_INT1, 0);
-        digitalWrite(R_INT2, 0);
+        digitalWrite(L_INT3, 0);
+        digitalWrite(L_INT4, 0);
     }
 
-    analogWrite(R_ENB, rl_pwm);
+    analogWrite(L_ENB, abs(rl_pwm));
 }
 
 /* ----------------------------- Program control ---------------------------- */
