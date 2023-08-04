@@ -7,6 +7,12 @@
   <maintainer email="mrp-project@todo.todo">mrp project</maintainer>
   <license>TODO: License declaration</license>
 
+  <depend>robot_state_publisher</depend>
+  <depend>rplidar_ros</depend>
+  <depend>controller_manager</depend>
+
+  <exec_depend>gazebo_ros</exec_depend>
+
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <test_depend>ament_lint_auto</test_depend>
