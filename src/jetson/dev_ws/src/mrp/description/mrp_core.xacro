@@ -3,6 +3,19 @@
 
     <xacro:include filename="inertial_macros.xacro"/>
 
+    <!-- These are in meters and kilograms -->
+    <xacro:property name="chassis_length" value="0.4"/>
+    <xacro:property name="chassis_width" value="0.35"/>
+    <xacro:property name="chassis_height" value="0.28"/>
+    <xacro:property name="chassis_mass" value="30"/> <!-- TODO -->
+    <xacro:property name="wheel_radius" value="0.0762"/>
+    <xacro:property name="wheel_thickness" value="0.0381"/>
+    <xacro:property name="wheel_mass" value="1.5"/> <!-- TODO -->
+    <!-- From bottom center -->
+    <xacro:property name="wheel_offset_x" value="0.0875"/>
+    <xacro:property name="wheel_offset_y" value="${0.1877 + wheel_thickness/2}"/>
+    <xacro:property name="wheel_offset_z" value="0.0508"/>
+
     <!-- Material setup for simulation -->
     <material name="white">
         <color rgba="1 1 1 1"/>
@@ -29,7 +42,7 @@
     <joint name="chassis_joint" type="fixed">
         <parent link="base_link"/>
         <child link="chassis"/>
-        <origin xyz="-${chassis_length/2} 0 0"/> <!-- TODO: difference to from center of turning to rear of robot -->
+        <origin xyz="-${chassis_length/2} 0 0"/>
     </joint>
 
     <link name="chassis">

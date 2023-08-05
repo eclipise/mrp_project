@@ -1,32 +1,17 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro"  name="robot">
 
+    <xacro:arg name="use_ros2_control" default="true"/>
     <xacro:arg name="sim_mode" default="false"/>
-
-    <!-- These are in meters and kilograms -->
-    <xacro:property name="chassis_length" value="0.4"/>
-    <xacro:property name="chassis_width" value="0.35"/>
-    <xacro:property name="chassis_height" value="0.28"/>
-    <xacro:property name="chassis_mass" value="30"/> <!-- TODO -->
-    <xacro:property name="wheel_radius" value="0.0762"/>
-    <xacro:property name="wheel_thickness" value="0.0381"/>
-    <xacro:property name="wheel_mass" value="1.5"/> <!-- TODO -->
-    <!-- From bottom center -->
-    <xacro:property name="wheel_offset_x" value="0.0875"/>
-    <xacro:property name="wheel_offset_y" value="${0.1877 + wheel_thickness/2}"/>
-    <xacro:property name="wheel_offset_z" value="0.0508"/>
-
-    <xacro:property name="lidar_radius" value="0.035"/>
-    <xacro:property name="lidar_thickness" value="0.02"/>
-    <xacro:property name="lidar_mass" value="0.5"/> 
-    <!-- From bottom rear --> <!-- TODO -->
-    <xacro:property name="lidar_offset_x" value="0.3246"/>
-    <xacro:property name="lidar_offset_y" value="0"/>
-    <xacro:property name="lidar_offset_z" value="0.31175"/>
 
     <xacro:include filename="mrp_core.xacro"/>
 
-    <xacro:include filename="ros2_control.xacro"/>
+    <xacro:if value="$(arg use_ros2_control)">
+        <xacro:include filename="ros2_control.xacro" />
+    </xacro:if>
+    <xacro:unless value="$(arg use_ros2_control)">
+        <xacro:include filename="gazebo_control.xacro" />
+    </xacro:unless>
 
     <xacro:include filename="lidar.xacro"/>
 

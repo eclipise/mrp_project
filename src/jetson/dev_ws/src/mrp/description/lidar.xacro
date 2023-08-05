@@ -1,6 +1,15 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
 
+    <!-- These are in meters and kilograms -->
+    <xacro:property name="lidar_radius" value="0.035"/>
+    <xacro:property name="lidar_thickness" value="0.02"/>
+    <xacro:property name="lidar_mass" value="0.5"/> 
+    <!-- From bottom rear --> <!-- TODO -->
+    <xacro:property name="lidar_offset_x" value="0.3246"/>
+    <xacro:property name="lidar_offset_y" value="0"/>
+    <xacro:property name="lidar_offset_z" value="0.31175"/>
+
     <joint name="laser_joint" type="fixed">
         <parent link="chassis"/>
         <child link="laser_frame"/>
