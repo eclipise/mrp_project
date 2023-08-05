@@ -1,4 +1,5 @@
 #include <SharpIR.h>
+#include <util/atomic.h>
 
 /* ----------------------------- Program config ----------------------------- */
 
@@ -27,7 +28,7 @@ const unsigned IR_POLL = 200;
 // ACS712 ammeter constants
 const float AMMETER_VOLTAGE = 5.0;
 const float AMMETER_SENSITIVITY = 0.066;
-const int AMMETER_MAX = 1024; // Ammeter raw value is in range [0, 1024]
+const int AMMETER_MAX = 1024;   // Ammeter raw value is in range [0, 1024]
 const float MIN_CURRENT = 0.25; // Values below this are treated as 0 amps
 
 /* ---------------------------- Arduino pin setup --------------------------- */
@@ -85,6 +86,8 @@ unsigned long lastIRTime = 0;
 // IR sensor data
 int fl_dist, fr_dist, rr_dist, rl_dist, fc_dist;
 
+// Any access to these variables must be wrapped in an ATOMIC_BLOCK to prevent
+// interrupts mid-read, since they are larger than 1 byte.
 volatile long fl_ticks, fr_ticks, rr_ticks, rl_ticks;
 
 /* -------------------------------- Encoders -------------------------------- */
@@ -294,7 +297,7 @@ float readAmmeter() {
     if (abs(current) < MIN_CURRENT) {
         current = 0;
     }
-    
+
     return current;
 }
 
@@ -304,19 +307,37 @@ void run_command(char cmd_sel, int arg1, int arg2, int arg3, int arg4) {
     switch (cmd_sel) {
     // Encoder read
     case 'e':
-        Serial.print(fl_ticks);
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+            int local_fl_ticks = fl_ticks;
+        }
+
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+            int local_fr_ticks = fr_ticks;
+        }
+
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+            int local_rl_ticks = rl_ticks;
+        }
+
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+            int local_rr_ticks = rr_ticks;
+        }
+
+        Serial.print(local_fl_ticks);
         Serial.print(" ");
-        Serial.print(fr_ticks);
+        Serial.print(local_fr_ticks);
         Serial.print(" ");
-        Serial.print(rl_ticks);
+        Serial.print(local_rl_ticks);
         Serial.print(" ");
-        Serial.println(rr_ticks);
+        Serial.println(local_rr_ticks);
+        
         break;
 
-    // Set motor pwm
+    // Set motor pwm (open loop)
     case 'm':
         lastCmdTime = millis();
         set_pwm(arg1, arg2, arg3, arg4);
+        Serial.println("OK");
         break;
 
     // IR read
@@ -344,18 +365,21 @@ void run_command(char cmd_sel, int arg1, int arg2, int arg3, int arg4) {
     case 't':
         LINEAR_CLEAR_THRESHOLD = arg1;
         TURN_CLEAR_THRESHOLD = arg2;
+        Serial.println("OK");
         break;
 
     // Command timeout config
     case 'o':
         COMMAND_TIMEOUT = arg1;
+        Serial.println("OK");
         break;
 
     // Max speed config
-    case 's': 
+    case 's':
         PWM_MIN = arg1;
         PWM_MAX = arg2;
         PWM_TURN = arg3;
+        Serial.println("OK");
         break;
 
     // Reset encoders
@@ -364,6 +388,7 @@ void run_command(char cmd_sel, int arg1, int arg2, int arg3, int arg4) {
         fr_ticks = 0;
         rl_ticks = 0;
         rr_ticks = 0;
+        Serial.println("OK");
         break;
 
     // Read ammeter
