@@ -218,3 +218,7 @@ hardware_interface::return_type ArduinoInterface::write(const rclcpp::Time & /*t
 }
 
 } // namespace arduino_interface
+
+#include "pluginlib/class_list_macros.hpp"
+PLUGINLIB_EXPORT_CLASS(
+  arduino_interface::ArduinoInterface, hardware_interface::SystemInterface)

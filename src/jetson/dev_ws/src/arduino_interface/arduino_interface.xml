@@ -1,0 +1,9 @@
+<library path="arduino_interface">
+    <class name="arduino_interface/ArduinoInterface"
+        type="arduino_interface::ArduinoInterface"
+        base_class_type="hardware_interface::SystemInterface">
+        <description>
+            Hardware Interface for Differential Drive Arduino controller.
+        </description>
+    </class>
+</library>
