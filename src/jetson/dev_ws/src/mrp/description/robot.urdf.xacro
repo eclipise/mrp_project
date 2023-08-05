@@ -13,7 +13,7 @@
     <xacro:property name="wheel_mass" value="1.5"/> <!-- TODO -->
     <!-- From bottom center -->
     <xacro:property name="wheel_offset_x" value="0.0875"/>
-    <xacro:property name="wheel_offset_y" value="0.1877"/>
+    <xacro:property name="wheel_offset_y" value="${0.1877 + wheel_thickness/2}"/>
     <xacro:property name="wheel_offset_z" value="0.0508"/>
 
     <xacro:property name="lidar_radius" value="0.035"/>
