@@ -1,4 +1,5 @@
 #include <SharpIR.h>
+#include <filters.h>
 #include <util/atomic.h>
 
 /* ----------------------------- Program config ----------------------------- */
@@ -30,6 +31,19 @@ const float AMMETER_VOLTAGE = 5.0;
 const float AMMETER_SENSITIVITY = 0.066;
 const int AMMETER_MAX = 1024;   // Ammeter raw value is in range [0, 1024]
 const float MIN_CURRENT = 0.25; // Values below this are treated as 0 amps
+
+const int ENC_COUNTS_PER_REV = 40;
+
+// Config for velocity low-pass filter 
+const float CUTOFF_FREQ = 25.0;
+const float SAMPLING_TIME = 0.005;
+IIR::ORDER ORDER = IIR::ORDER::OD1;
+
+Filter filter(cutoff_freq, sampling_time, order);
+
+// PID config
+int Kp = 5;
+int Ki = 10;
 
 /* ---------------------------- Arduino pin setup --------------------------- */
 
@@ -90,6 +104,26 @@ int fl_dist, fr_dist, rr_dist, rl_dist, fc_dist;
 // interrupts mid-read, since they are larger than 1 byte.
 volatile long fl_ticks, fr_ticks, rr_ticks, rl_ticks;
 
+// Tick value at last velocity calculation
+long prev_fl_ticks = 0, prev_fr_ticks = 0, prev_rr_ticks = 0, prev_rl_ticks = 0;
+
+// Time of last velocity calculation in microseconds
+unsigned long prev_fl_time = 0, prev_fr_time = 0, prev_rr_time = 0, prev_rl_time = 0;
+
+// Current velocity
+float fl_vel = 0, fr_vel = 0, rl_vel = 0, rr_vel = 0;
+
+// Desired velocity
+float target_fl_vel = 0, target_fr_vel = 0, target_rl_vel = 0, target_rr_vel = 0;
+
+// Current PWM value sent to the motors
+int fl_pwm = 0, fr_pwm = 0, rr_pwm = 0, rl_pwm = 0;
+
+// Error integrals for PID
+float fl_i = 0, fr_i = 0, rl_i = 0, rr_i = 0;
+
+bool PID_enabled = false;
+
 /* -------------------------------- Encoders -------------------------------- */
 
 // Since the encoders only register ticks, not direction, these tick functions
@@ -128,6 +162,48 @@ void RL_tick() {
     } else {
         rl_ticks--;
     }
+}
+
+// Designed so that it can be called once for each motor's set of variables,
+// i.e. calc_vel(fl_ticks, prev_fl_ticks, prev_fl_time, fl_vel). This is a bit
+// odd to use on globals, but the alternative is to copy paste this code 4 times.
+void calc_vel(volatile long &ticks, long &prev_ticks, unsigned long &prev_time, float &vel) {
+    int local_ticks = 0;
+
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+        local_ticks = ticks;
+    }
+
+    long current_time = micros();
+    float deltaT = float(current_time - lastVelTime) / 1.0e6; // Interval in seconds
+    float velocity = (prev_ticks - local_ticks) / deltaT;
+    prev_ticks = local_ticks;
+    prev_time = current_time;
+
+    velocity = velocity / ENC_COUNTS_PER_REV * 60; // Converts counts/s to RPM
+
+    vel = filter(velocity);
+}
+
+/* ----------------------------------- PID ---------------------------------- */
+
+// Same design principal as calc_vel, see that comment. 
+void do_PID(float &target_vel, float &vel, float &eI, int &PWM) {
+    float error = target_vel - vel;
+
+    eI = eI + error * deltaT;
+
+    float u = Kp * error + Ki * eI;
+
+    // constrain u
+    if (abs(u) < PWM_MIN) {
+        u = 0;
+    } else if (abs(u) > PWM_MAX) {
+        // Sets u to the max PWM preserving the sign
+        u = PWM_MAX * ((u > 0) - (u < 0));
+    }
+
+    PWM = u;
 }
 
 /* ------------------------------- IR Sensors ------------------------------- */
@@ -179,27 +255,7 @@ bool checkClear() {
 
 /* --------------------------------- Motors --------------------------------- */
 
-// int constrain_pwm(int pwm) {
-
-//     // Constrain left
-//     if (abs(pwmLeftReq) < PWM_MIN) {
-//         pwmLeftReq = 0;
-//     } else if (abs(pwmLeftReq) > PWM_MAX) {
-//         // Sets the PWM to the max value, but with the same sign
-//         pwmLeftReq = PWM_MAX * ((pwmLeftReq > 0) - (pwmLeftReq < 0));
-//     }
-
-//     // Constrain right
-//     if (abs(pwmRightReq) < PWM_MIN) {
-//         pwmRightReq = 0;
-//     } else if (abs(pwmRightReq) > PWM_MAX) {
-//         // Sets the PWM to the max value, but with the same sign
-//         pwmRightReq = PWM_MAX * ((pwmRightReq > 0) - (pwmRightReq < 0));
-//     }
-// }
-
-// TODO: check directions and PWM pins
-void set_pwm(int fl_pwm, int fr_pwm, int rr_pwm, int rl_pwm) {
+void set_pwm() {
     // Front left
     if (fl_pwm > 0) {
         // Forward
@@ -307,20 +363,24 @@ void run_command(char cmd_sel, int arg1, int arg2, int arg3, int arg4) {
     switch (cmd_sel) {
     // Encoder read
     case 'e':
+        int local_fl_ticks;
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-            int local_fl_ticks = fl_ticks;
+            local_fl_ticks = fl_ticks;
         }
 
+        int local_fr_ticks;
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-            int local_fr_ticks = fr_ticks;
+            local_fr_ticks = fr_ticks;
         }
 
+        int local_rl_ticks;
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-            int local_rl_ticks = rl_ticks;
+            local_rl_ticks = rl_ticks;
         }
 
+        int local_rr_ticks;
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-            int local_rr_ticks = rr_ticks;
+            local_rr_ticks = rr_ticks;
         }
 
         Serial.print(local_fl_ticks);
@@ -330,13 +390,19 @@ void run_command(char cmd_sel, int arg1, int arg2, int arg3, int arg4) {
         Serial.print(local_rl_ticks);
         Serial.print(" ");
         Serial.println(local_rr_ticks);
-        
         break;
 
     // Set motor pwm (open loop)
     case 'm':
         lastCmdTime = millis();
-        set_pwm(arg1, arg2, arg3, arg4);
+
+        PID_enabled = false;
+
+        fl_pwm = arg1;
+        fr_pwm = arg2;
+        rl_pwm = arg3;
+        rr_pwm = arg4;
+
         Serial.println("OK");
         break;
 
@@ -394,6 +460,27 @@ void run_command(char cmd_sel, int arg1, int arg2, int arg3, int arg4) {
     // Read ammeter
     case 'a':
         Serial.println(readAmmeter());
+        break;
+
+    // Set motor velocity (closed loop)
+    case 'v':
+        lastCmdTime = millis();
+
+        target_fl_vel = arg1;
+        target_fr_vel = arg2;
+        target_rl_vel = arg3;
+        target_rr_vel = arg4;
+
+        PID_enabled = true;
+
+        Serial.println("OK");
+        break;
+
+    // PID config
+    case 'u':
+        Kp = arg1;
+        Ki = arg2;
+        Serial.println("OK");
         break;
 
     default:
@@ -466,7 +553,12 @@ void loop() {
 
     if (currentTime - lastCmdTime > COMMAND_TIMEOUT) {
         // Stops robot if COMMAND_TIMEOUT ms have elapsed since the last command
-        set_pwm(0, 0, 0, 0);
+        fl_pwm = 0;
+        fr_pwm = 0;
+        rl_pwm = 0;
+        rr_pwm = 0;
+
+        PID_enabled = false;
     } else if (currentTime - lastIRTime > IR_POLL) {
         // Checks the IR sensors if it has been at least IR_POLL ms since the last check
         lastIRTime = currentTime;
@@ -474,7 +566,32 @@ void loop() {
         updateIR();
 
         if (!checkClear()) {
-            set_pwm(0, 0, 0, 0);
+            fl_pwm = 0;
+            fr_pwm = 0;
+            rl_pwm = 0;
+            rr_pwm = 0;
+
+            PID_enabled = false;
         }
     }
+
+
+    if (PID_enabled) {
+        calc_vel(fl_ticks, prev_fl_ticks, prev_fl_time, fl_vel);
+        do_PID(target_fl_vel, fl_vel, fl_i, fl_pwm);
+        
+        calc_vel(fr_ticks, prev_fr_ticks, prev_fr_time, fr_vel);
+        do_PID(target_fr_vel, fr_vel, fr_i, fr_pwm);
+        
+        calc_vel(rl_ticks, prev_rl_ticks, prev_rl_time, rl_vel);
+        do_PID(target_rl_vel, rl_vel, rl_i, rl_pwm);
+        
+        calc_vel(rr_ticks, prev_rr_ticks, prev_rr_time, rr_vel);
+        do_PID(target_rr_vel, rr_vel, rr_i, rr_pwm);
+    }
+
+    set_pwm();
+
+    // Converts seconds to milliseconds
+    delay(SAMPLING_TIME * 1000);
 }
