@@ -34,7 +34,7 @@ const float MIN_CURRENT = 0.25; // Values below this are treated as 0 amps
 const int ENC_COUNTS_PER_REV = 40;
 const double WHEEL_RADIUS = 0.0762; // meters
 
-// PID config
+// Default PID config
 const int Kp = 2;
 const int Ki = 5;
 const int Kd = 1;
@@ -42,16 +42,16 @@ const int Kd = 1;
 /* ---------------------------- Arduino pin setup --------------------------- */
 
 // Pins for connection to the left motor driver
-const int L_ENA = 5; // FL
-const int L_ENB = 6; // RL
+const int L_ENA = 5; // fl
+const int L_ENB = 6; // rl
 const int L_INT1 = 44;
 const int L_INT2 = 46;
 const int L_INT3 = 48;
 const int L_INT4 = 50;
 
 // Pins for connection to the right motor driver
-const int R_ENA = 2; // FR
-const int R_ENB = 3; // RR
+const int R_ENA = 2; // fr
+const int R_ENB = 3; // rr
 const int R_INT1 = 45;
 const int R_INT2 = 47;
 const int R_INT3 = 49;
@@ -59,19 +59,19 @@ const int R_INT4 = 51;
 
 // Pins for the encoders
 const int FL_ENC = 18;
-const int RL_ENC = 19;
 const int FR_ENC = 20;
+const int RL_ENC = 19;
 const int RR_ENC = 21;
 
 // Model ID for the IR sensors, used internally in SharpIR
 #define model SharpIR::GP2Y0A21YK0F
 
 // Sets up the IR sensors, second argument is the pin they're connected to
-SharpIR IR_FL(model, A1); // Front left
-SharpIR IR_FR(model, A2); // Front right
-SharpIR IR_RR(model, A3); // Rear right
-SharpIR IR_RL(model, A4); // Rear left
-SharpIR IR_FC(model, A5); // Front center
+SharpIR IR_FL(model, A1);
+SharpIR IR_FC(model, A5);
+SharpIR IR_FR(model, A2);
+SharpIR IR_RL(model, A4);
+SharpIR IR_RR(model, A3);
 
 // Pin for the ammeter
 #define AMMETER_PIN A0
@@ -83,8 +83,8 @@ SharpIR IR_FC(model, A5); // Front center
 // when robot is ordered to stop.
 bool fl_moving_forward = true;
 bool fr_moving_forward = true;
-bool rr_moving_forward = true;
 bool rl_moving_forward = true;
+bool rr_moving_forward = true;
 
 // Timestamp in milliseconds of the last command
 unsigned long lastCmdTime = 0;
@@ -92,17 +92,17 @@ unsigned long lastCmdTime = 0;
 unsigned long lastIRTime = 0;
 
 // IR sensor data
-int fl_dist, fr_dist, rr_dist, rl_dist, fc_dist;
+int fl_dist, fc_dist, fr_dist, rl_dist, rr_dist;
 
 // Any access to these variables must be wrapped in an ATOMIC_BLOCK to prevent
 // interrupts mid-read, since they are larger than 1 byte.
-volatile long fl_ticks, fr_ticks, rr_ticks, rl_ticks;
+volatile long fl_ticks, fr_ticks, rl_ticks, rr_ticks;
 
 // Tick value at last velocity calculation
-long prev_fl_ticks = 0, prev_fr_ticks = 0, prev_rr_ticks = 0, prev_rl_ticks = 0;
+long prev_fl_ticks = 0, prev_fr_ticks = 0, prev_rl_ticks = 0, prev_rr_ticks = 0;
 
 // Time of last velocity calculation in microseconds
-unsigned long prev_fl_time = 0, prev_fr_time = 0, prev_rr_time = 0, prev_rl_time = 0;
+unsigned long prev_fl_time = 0, prev_fr_time = 0, prev_rl_time = 0, prev_rr_time = 0;
 
 // Current velocity
 double fl_vel = 0, fr_vel = 0, rl_vel = 0, rr_vel = 0;
@@ -111,7 +111,7 @@ double fl_vel = 0, fr_vel = 0, rl_vel = 0, rr_vel = 0;
 double target_fl_vel = 0, target_fr_vel = 0, target_rl_vel = 0, target_rr_vel = 0;
 
 // Current PWM value sent to the motors (double because of PID)
-double fl_pwm = 0, fr_pwm = 0, rr_pwm = 0, rl_pwm = 0;
+double fl_pwm = 0, fr_pwm = 0, rl_pwm = 0, rr_pwm = 0;
 
 /* ----------------------------------- PID ---------------------------------- */
 
@@ -159,19 +159,19 @@ void FR_tick() {
     }
 }
 
-void RR_tick() {
-    if (rr_moving_forward) {
-        rr_ticks++;
-    } else {
-        rr_ticks--;
-    }
-}
-
 void RL_tick() {
     if (rl_moving_forward) {
         rl_ticks++;
     } else {
         rl_ticks--;
+    }
+}
+
+void RR_tick() {
+    if (rr_moving_forward) {
+        rr_ticks++;
+    } else {
+        rr_ticks--;
     }
 }
 
@@ -195,16 +195,16 @@ void calc_vel(volatile long &ticks, long &prev_ticks, unsigned long &prev_time, 
 
 void updateIR() {
     fl_dist = IR_FL.getDistance();
-    fr_dist = IR_FR.getDistance();
-    rr_dist = IR_RR.getDistance();
-    rl_dist = IR_RL.getDistance();
     fc_dist = IR_FC.getDistance();
+    fr_dist = IR_FR.getDistance();
+    rl_dist = IR_RL.getDistance();
+    rr_dist = IR_RR.getDistance();
 }
 
 bool frontClear() {
-    return fr_dist > LINEAR_CLEAR_THRESHOLD &&
-           fl_dist > LINEAR_CLEAR_THRESHOLD &&
-           fc_dist > LINEAR_CLEAR_THRESHOLD;
+    return fl_dist > LINEAR_CLEAR_THRESHOLD &&
+           fc_dist > LINEAR_CLEAR_THRESHOLD &&
+           fr_dist > LINEAR_CLEAR_THRESHOLD;
 }
 
 bool backClear() {
@@ -213,11 +213,11 @@ bool backClear() {
 }
 
 bool areaClear() {
-    return fr_dist > TURN_CLEAR_THRESHOLD &&
-           fl_dist > TURN_CLEAR_THRESHOLD &&
+    return fl_dist > TURN_CLEAR_THRESHOLD &&
+           fc_dist > TURN_CLEAR_THRESHOLD &&
+           fr_dist > TURN_CLEAR_THRESHOLD &&
            rl_dist > TURN_CLEAR_THRESHOLD &&
-           rr_dist > TURN_CLEAR_THRESHOLD &&
-           fc_dist > TURN_CLEAR_THRESHOLD;
+           rr_dist > TURN_CLEAR_THRESHOLD;
 }
 
 bool checkClear() {
@@ -285,27 +285,6 @@ void set_pwm() {
 
     analogWrite(R_ENA, abs(fr_pwm));
 
-    // Rear right
-    if (rr_pwm > 0) {
-        // Forward
-        digitalWrite(R_INT3, 0);
-        digitalWrite(R_INT4, 1);
-
-        rr_moving_forward = true;
-    } else if (rr_pwm < 0) {
-        // Backward
-        digitalWrite(R_INT3, 1);
-        digitalWrite(R_INT4, 0);
-
-        rr_moving_forward = false;
-    } else {
-        // Stop
-        digitalWrite(R_INT3, 0);
-        digitalWrite(R_INT4, 0);
-    }
-
-    analogWrite(R_ENB, abs(rr_pwm));
-
     // Rear left
     if (rl_pwm > 0) {
         // Forward
@@ -326,6 +305,27 @@ void set_pwm() {
     }
 
     analogWrite(L_ENB, abs(rl_pwm));
+
+    // Rear right
+    if (rr_pwm > 0) {
+        // Forward
+        digitalWrite(R_INT3, 0);
+        digitalWrite(R_INT4, 1);
+
+        rr_moving_forward = true;
+    } else if (rr_pwm < 0) {
+        // Backward
+        digitalWrite(R_INT3, 1);
+        digitalWrite(R_INT4, 0);
+
+        rr_moving_forward = false;
+    } else {
+        // Stop
+        digitalWrite(R_INT3, 0);
+        digitalWrite(R_INT4, 0);
+    }
+
+    analogWrite(R_ENB, abs(rr_pwm));
 }
 
 /* --------------------------------- Ammeter -------------------------------- */
@@ -497,14 +497,14 @@ void setup() {
     // Sets the encoder pins to input mode
     pinMode(FL_ENC, INPUT);
     pinMode(FR_ENC, INPUT);
-    pinMode(RR_ENC, INPUT);
     pinMode(RL_ENC, INPUT);
+    pinMode(RR_ENC, INPUT);
 
     // Attaches interrupts to encoder pins, calls given functions on rising edge
     attachInterrupt(digitalPinToInterrupt(FL_ENC), FL_tick, RISING);
     attachInterrupt(digitalPinToInterrupt(FR_ENC), FR_tick, RISING);
-    attachInterrupt(digitalPinToInterrupt(RR_ENC), RR_tick, RISING);
     attachInterrupt(digitalPinToInterrupt(RL_ENC), RL_tick, RISING);
+    attachInterrupt(digitalPinToInterrupt(RR_ENC), RR_tick, RISING);
 
     // Turns off the motors by default
     digitalWrite(L_INT1, 0);
