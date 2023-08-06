@@ -104,10 +104,10 @@ long prev_fl_ticks = 0, prev_fr_ticks = 0, prev_rl_ticks = 0, prev_rr_ticks = 0;
 // Time of last velocity calculation in microseconds
 unsigned long prev_fl_time = 0, prev_fr_time = 0, prev_rl_time = 0, prev_rr_time = 0;
 
-// Current velocity
+// Current velocity in rad/s
 double fl_vel = 0, fr_vel = 0, rl_vel = 0, rr_vel = 0;
 
-// Desired velocity
+// Desired velocity in rad/s
 double target_fl_vel = 0, target_fr_vel = 0, target_rl_vel = 0, target_rr_vel = 0;
 
 // Current PWM value sent to the motors (double because of PID)
@@ -188,7 +188,7 @@ void calc_vel(volatile long &ticks, long &prev_ticks, unsigned long &prev_time, 
     prev_ticks = local_ticks;
     prev_time = current_time;
 
-    vel = WHEEL_RADIUS * 2 * PI * (velocity / ENC_COUNTS_PER_REV); // Converts to m/s
+    vel = (velocity / ENC_COUNTS_PER_REV) * 2 * PI; // Converts to rad/s
 }
 
 /* ------------------------------- IR Sensors ------------------------------- */
@@ -360,7 +360,7 @@ void run_command(char cmd_sel, int arg1, int arg2, int arg3, int arg4) {
         Serial.println("OK");
         break;
 
-    // Set motor velocity (closed loop)
+    // Set motor velocity in rad/s (closed loop)
     case 'm':
         lastCmdTime = millis();
 
