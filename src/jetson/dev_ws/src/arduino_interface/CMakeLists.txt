@@ -60,6 +60,15 @@ if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
 endif()
 
+# This is terrible, but it makes libserial work
+set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
+set(THREADS_HAVE_PTHREAD_ARG 1)
+find_package(Threads REQUIRED)
+find_package(PkgConfig)
+pkg_check_modules(SERIAL libserial)
+target_include_directories(arduino_interface PRIVATE ${SERIAL_INCLUDE_DIRS})
+target_link_libraries(arduino_interface PRIVATE ${SERIAL_LDFLAGS} ${CMAKE_THREAD_LIBS_INIT})
+
 ## EXPORTS
 ament_export_targets(export_arduino_interface HAS_LIBRARY_TARGET)
 ament_export_dependencies(${THIS_PACKAGE_INCLUDE_DEPENDS})
