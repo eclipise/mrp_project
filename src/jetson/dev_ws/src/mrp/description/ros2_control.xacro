@@ -11,7 +11,7 @@
                 <param name="fr_wheel_name">front_right_wheel_joint</param>
                 <param name="device">/dev/ttyACM0</param> <!-- TODO -->
                 <param name="baud_rate">57600</param>
-                <param name="timeout">1000</param> <!-- This is for comms, not commands -->
+                <param name="timeout_ms">1000</param> <!-- This is for comms, not commands -->
                 <param name="enc_counts_per_rev">40</param>
 
             </hardware>
@@ -22,8 +22,8 @@
                     <param name="max">10</param>
                 </command_interface>
 
-                <state_interface name="velocity"/>
                 <state_interface name="position"/>
+                <state_interface name="velocity"/>
             </joint>
 
             <joint name="rear_right_wheel_joint">
@@ -32,8 +32,8 @@
                     <param name="max">10</param>
                 </command_interface>
 
-                <state_interface name="velocity"/>
                 <state_interface name="position"/>
+                <state_interface name="velocity"/>
             </joint>
 
             <joint name="front_left_wheel_joint">
@@ -42,8 +42,8 @@
                     <param name="max">10</param>
                 </command_interface>
 
-                <state_interface name="velocity"/>
                 <state_interface name="position"/>
+                <state_interface name="velocity"/>
             </joint>
 
             <joint name="front_right_wheel_joint">
@@ -52,8 +52,8 @@
                     <param name="max">10</param>
                 </command_interface>
 
-                <state_interface name="velocity"/>
                 <state_interface name="position"/>
+                <state_interface name="velocity"/>
             </joint>
         </ros2_control>
     </xacro:unless>
