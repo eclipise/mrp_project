@@ -173,7 +173,7 @@ hardware_interface::CallbackReturn ArduinoInterface::on_deactivate(const rclcpp_
     return hardware_interface::CallbackReturn::SUCCESS;
 }
 
-hardware_interface::return_type ArduinoInterface::read(const rclcpp::Time & /*time*/, const rclcpp::Duration &period) {
+hardware_interface::return_type ArduinoInterface::read(const rclcpp::Time & /*time*/, const rclcpp::Duration &/*period*/) {
     if (!comm_.connected()) {
         return hardware_interface::return_type::ERROR;
     }
