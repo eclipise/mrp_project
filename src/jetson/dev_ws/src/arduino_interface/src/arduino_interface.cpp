@@ -13,7 +13,6 @@ hardware_interface::CallbackReturn ArduinoInterface::on_init(const hardware_inte
     cfg_.fr_wheel_name = info_.hardware_parameters["fr_wheel_name"];
     cfg_.rl_wheel_name = info_.hardware_parameters["rl_wheel_name"];
     cfg_.rr_wheel_name = info_.hardware_parameters["rr_wheel_name"];
-    cfg_.loop_rate = std::stof(info_.hardware_parameters["loop_rate"]);
     cfg_.device = info_.hardware_parameters["device"];
     cfg_.baud_rate = std::stoi(info_.hardware_parameters["baud_rate"]);
     cfg_.timeout_ms = std::stoi(info_.hardware_parameters["timeout_ms"]);
@@ -21,9 +20,8 @@ hardware_interface::CallbackReturn ArduinoInterface::on_init(const hardware_inte
 
     if (info_.hardware_parameters.count("pid_p") > 0) {
         cfg_.pid_p = std::stoi(info_.hardware_parameters["pid_p"]);
-        cfg_.pid_d = std::stoi(info_.hardware_parameters["pid_d"]);
         cfg_.pid_i = std::stoi(info_.hardware_parameters["pid_i"]);
-        cfg_.pid_o = std::stoi(info_.hardware_parameters["pid_o"]);
+        cfg_.pid_d = std::stoi(info_.hardware_parameters["pid_d"]);
     } else {
         RCLCPP_INFO(rclcpp::get_logger("ArduinoInterface"), "PID values not supplied, using defaults.");
     }
@@ -157,7 +155,7 @@ hardware_interface::CallbackReturn ArduinoInterface::on_activate(const rclcpp_li
     }
 
     if (cfg_.pid_p > 0) {
-        comm_.set_pid_values(cfg_.pid_p, cfg_.pid_d, cfg_.pid_i, cfg_.pid_o);
+        comm_.set_pid_values(cfg_.pid_p, cfg_.pid_i, cfg_.pid_d);
     }
 
     RCLCPP_INFO(rclcpp::get_logger("ArduinoInterface"), "Successfully activated.");
@@ -181,24 +179,12 @@ hardware_interface::return_type ArduinoInterface::read(const rclcpp::Time & /*ti
     }
 
     comm_.read_encoder_values(fl_wheel_.enc, fr_wheel_.enc, rl_wheel_.enc, rr_wheel_.enc);
+    comm_.read_velocity(fl_wheel_.vel, fr_wheel_.vel, rl_wheel_.vel, rr_wheel_.vel);
 
-    double delta_seconds = period.seconds();
-
-    float pos_prev = fl_wheel_.pos;
     fl_wheel_.pos = fl_wheel_.calc_enc_angle();
-    fl_wheel_.vel = (fl_wheel_.pos - pos_prev) / delta_seconds;
-
-    pos_prev = fr_wheel_.pos;
     fr_wheel_.pos = fr_wheel_.calc_enc_angle();
-    fr_wheel_.vel = (fr_wheel_.pos - pos_prev) / delta_seconds;
-
-    pos_prev = rl_wheel_.pos;
     rl_wheel_.pos = rl_wheel_.calc_enc_angle();
-    rl_wheel_.vel = (rl_wheel_.pos - pos_prev) / delta_seconds;
-
-    pos_prev = rr_wheel_.pos;
     rr_wheel_.pos = rr_wheel_.calc_enc_angle();
-    rr_wheel_.vel = (rr_wheel_.pos - pos_prev) / delta_seconds;
 
     return hardware_interface::return_type::OK;
 }
@@ -208,11 +194,8 @@ hardware_interface::return_type ArduinoInterface::write(const rclcpp::Time & /*t
         return hardware_interface::return_type::ERROR;
     }
 
-    int fl_wheel_counts_per_loop = fl_wheel_.cmd / fl_wheel_.rads_per_count / cfg_.loop_rate;
-    int fr_wheel_counts_per_loop = fr_wheel_.cmd / fr_wheel_.rads_per_count / cfg_.loop_rate;
-    int rl_wheel_counts_per_loop = rl_wheel_.cmd / rl_wheel_.rads_per_count / cfg_.loop_rate;
-    int rr_wheel_counts_per_loop = rr_wheel_.cmd / rr_wheel_.rads_per_count / cfg_.loop_rate;
-    comm_.set_motor_values(fl_wheel_counts_per_loop, fr_wheel_counts_per_loop, rl_wheel_counts_per_loop, rr_wheel_counts_per_loop);
+    // TODO: verify that cmd is actually in radians per second
+    comm_.set_motor_values(fl_wheel_.cmd, fr_wheel_.cmd, rl_wheel_.cmd, rr_wheel_.cmd);
 
     return hardware_interface::return_type::OK;
 }

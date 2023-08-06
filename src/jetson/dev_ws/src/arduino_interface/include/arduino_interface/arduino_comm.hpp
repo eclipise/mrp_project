@@ -106,16 +106,41 @@ class ArduinoComm {
         val_4 = value[3];
     }
 
+    // function added
+    void read_velocity(double &val_1, double &val_2, double &val_3, double &val_4) {
+        std::string response = send_msg("v\n");
+
+        std::stringstream ss(response);
+
+        int i = 0;
+        double value[4];
+
+        // Reads 4 doubles from the response
+        while (ss >> value[i]) {
+            i++;
+
+            // This should be redundant, but will prevent unexpected values overflowing the array
+            if (i >= 4) {
+                break;
+            }
+        }
+
+        val_1 = value[0];
+        val_2 = value[1];
+        val_3 = value[2];
+        val_4 = value[3];
+    }
+
     // function modified
     void set_motor_values(int val_1, int val_2, int val_3, int val_4) {
         std::stringstream ss;
-        ss << "v " << val_1 << " " << val_2 << " " << val_3 << " " << val_4 << "\n";
+        ss << "m " << val_1 << " " << val_2 << " " << val_3 << " " << val_4 << "\n";
         send_msg(ss.str());
     }
 
-    void set_pid_values(int k_p, int k_d, int k_i, int k_o) {
+    void set_pid_values(int Kp, int Ki, int Kd) {
         std::stringstream ss;
-        ss << "u " << k_p << ":" << k_d << ":" << k_i << ":" << k_o << "\n";
+        ss << "p " << Kp << " " << Ki << " " << Kd << "\n";
         send_msg(ss.str());
     }
 
