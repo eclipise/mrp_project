@@ -346,7 +346,89 @@ float readAmmeter() {
 
 void run_command(char cmd_sel, int arg1, int arg2, int arg3, int arg4) {
     switch (cmd_sel) {
-    // Encoder read
+    // Set motor PWM (open loop)
+    case 'o':
+        lastCmdTime = millis();
+
+        disable_PID();
+
+        fl_pwm = arg1;
+        fr_pwm = arg2;
+        rl_pwm = arg3;
+        rr_pwm = arg4;
+
+        Serial.println("OK");
+        break;
+
+    // Set motor velocity (closed loop)
+    case 'm':
+        lastCmdTime = millis();
+
+        target_fl_vel = arg1;
+        target_fr_vel = arg2;
+        target_rl_vel = arg3;
+        target_rr_vel = arg4;
+
+        enable_PID();
+
+        Serial.println("OK");
+        break;
+
+    // Max PWM config
+    case 's':
+        fl_PID.SetOutputLimits(arg1, arg2);
+        fr_PID.SetOutputLimits(arg1, arg2);
+        rl_PID.SetOutputLimits(arg1, arg2);
+        rr_PID.SetOutputLimits(arg1, arg2);
+
+        Serial.println("OK");
+        break;
+
+    // PID config
+    case 'p':
+        fl_PID.SetTunings(arg1, arg2, arg3);
+        fr_PID.SetTunings(arg1, arg2, arg3);
+        rl_PID.SetTunings(arg1, arg2, arg3);
+        rr_PID.SetTunings(arg1, arg2, arg3);
+
+        Serial.println("OK");
+        break;
+
+    // Command timeout config
+    case 't':
+        COMMAND_TIMEOUT = arg1;
+        Serial.println("OK");
+        break;
+
+    // IR read
+    case 'i':
+        updateIR();
+
+        Serial.print(fl_dist);
+        Serial.print(" ");
+        Serial.print(fc_dist);
+        Serial.print(" ");
+        Serial.print(fr_dist);
+        Serial.print(" ");
+        Serial.print(rl_dist);
+        Serial.print(" ");
+        Serial.println(rr_dist);
+        break;
+
+    // IR check
+    case 'c':
+        updateIR();
+        Serial.println(checkClear());
+        break;
+
+    // IR distance config
+    case 'd':
+        LINEAR_CLEAR_THRESHOLD = arg1;
+        TURN_CLEAR_THRESHOLD = arg2;
+        Serial.println("OK");
+        break;
+
+    // Read encoders
     case 'e':
         int local_fl_ticks;
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
@@ -377,64 +459,6 @@ void run_command(char cmd_sel, int arg1, int arg2, int arg3, int arg4) {
         Serial.println(local_rr_ticks);
         break;
 
-    // Set motor pwm (open loop)
-    case 'm':
-        lastCmdTime = millis();
-
-        disable_PID();
-
-        fl_pwm = arg1;
-        fr_pwm = arg2;
-        rl_pwm = arg3;
-        rr_pwm = arg4;
-
-        Serial.println("OK");
-        break;
-
-    // IR read
-    case 'i':
-        updateIR();
-
-        Serial.print(fl_dist);
-        Serial.print(" ");
-        Serial.print(fc_dist);
-        Serial.print(" ");
-        Serial.print(fr_dist);
-        Serial.print(" ");
-        Serial.print(rl_dist);
-        Serial.print(" ");
-        Serial.println(rr_dist);
-        break;
-
-    // IR check
-    case 'c':
-        updateIR();
-        Serial.println(checkClear());
-        break;
-
-    // IR threshold config
-    case 't':
-        LINEAR_CLEAR_THRESHOLD = arg1;
-        TURN_CLEAR_THRESHOLD = arg2;
-        Serial.println("OK");
-        break;
-
-    // Command timeout config
-    case 'o':
-        COMMAND_TIMEOUT = arg1;
-        Serial.println("OK");
-        break;
-
-    // Max pwm config
-    case 'p':
-        fl_PID.SetOutputLimits(arg1, arg2);
-        fr_PID.SetOutputLimits(arg1, arg2);
-        rl_PID.SetOutputLimits(arg1, arg2);
-        rr_PID.SetOutputLimits(arg1, arg2);
-
-        Serial.println("OK");
-        break;
-
     // Reset encoders
     case 'r':
         fl_ticks = 0;
@@ -444,33 +468,20 @@ void run_command(char cmd_sel, int arg1, int arg2, int arg3, int arg4) {
         Serial.println("OK");
         break;
 
+    // Read velocity
+    case 'v':
+        Serial.print(fl_vel);
+        Serial.print(" ");
+        Serial.print(fr_vel);
+        Serial.print(" ");
+        Serial.print(rl_vel);
+        Serial.print(" ");
+        Serial.println(rr_vel);
+        break;
+
     // Read ammeter
     case 'a':
         Serial.println(readAmmeter());
-        break;
-
-    // Set motor velocity (closed loop)
-    case 'v':
-        lastCmdTime = millis();
-
-        target_fl_vel = arg1;
-        target_fr_vel = arg2;
-        target_rl_vel = arg3;
-        target_rr_vel = arg4;
-
-        enable_PID();
-
-        Serial.println("OK");
-        break;
-
-    // PID config
-    case 'u':
-        fl_PID.SetTunings(arg1, arg2, arg3);
-        fr_PID.SetTunings(arg1, arg2, arg3);
-        rl_PID.SetTunings(arg1, arg2, arg3);
-        rr_PID.SetTunings(arg1, arg2, arg3);
-
-        Serial.println("OK");
         break;
 
     default:
