@@ -1,5 +1,5 @@
+#include <PID_v1.h>
 #include <SharpIR.h>
-#include <filters.h>
 #include <util/atomic.h>
 
 /* ----------------------------- Program config ----------------------------- */
@@ -13,18 +13,17 @@ int LINEAR_CLEAR_THRESHOLD = 25;
 int TURN_CLEAR_THRESHOLD = 20;
 
 // Values below PWM_MIN will be treated as 0
-int PWM_MIN = 24; // 10% power
+const int PWM_MIN = 24; // 10% power
 // Values above PWM_MAX will be reduced to PWM_MAX
-int PWM_MAX = 50; // 20% power
-// PWM value used when turning in place (+/- for each side, based on direction)
-int PWM_TURN = 75; // 30% power
+const int PWM_MAX = 50; // 20% power
 
 // Time in milliseconds to continue the last command before stopping, in absence
-// of a new command
+// of a new command.
 unsigned COMMAND_TIMEOUT = 200;
-// Time in milliseconds between checking if the IR sensors are blocked. Should
-// always be greater than 30 ms to prevent an internal delay in SharpIR.
+// Should always be greater than 30 ms to prevent an internal delay in SharpIR.
 const unsigned IR_POLL = 200;
+
+const unsigned PID_RATE = 20;
 
 // ACS712 ammeter constants
 const float AMMETER_VOLTAGE = 5.0;
@@ -33,17 +32,12 @@ const int AMMETER_MAX = 1024;   // Ammeter raw value is in range [0, 1024]
 const float MIN_CURRENT = 0.25; // Values below this are treated as 0 amps
 
 const int ENC_COUNTS_PER_REV = 40;
-
-// Config for velocity low-pass filter 
-const float CUTOFF_FREQ = 25.0;
-const float SAMPLING_TIME = 0.005;
-IIR::ORDER ORDER = IIR::ORDER::OD1;
-
-Filter filter(cutoff_freq, sampling_time, order);
+const double WHEEL_RADIUS = 0.0762; // meters
 
 // PID config
-int Kp = 5;
-int Ki = 10;
+const int Kp = 2;
+const int Ki = 5;
+const int Kd = 1;
 
 /* ---------------------------- Arduino pin setup --------------------------- */
 
@@ -111,18 +105,35 @@ long prev_fl_ticks = 0, prev_fr_ticks = 0, prev_rr_ticks = 0, prev_rl_ticks = 0;
 unsigned long prev_fl_time = 0, prev_fr_time = 0, prev_rr_time = 0, prev_rl_time = 0;
 
 // Current velocity
-float fl_vel = 0, fr_vel = 0, rl_vel = 0, rr_vel = 0;
+double fl_vel = 0, fr_vel = 0, rl_vel = 0, rr_vel = 0;
 
 // Desired velocity
-float target_fl_vel = 0, target_fr_vel = 0, target_rl_vel = 0, target_rr_vel = 0;
+double target_fl_vel = 0, target_fr_vel = 0, target_rl_vel = 0, target_rr_vel = 0;
 
-// Current PWM value sent to the motors
-int fl_pwm = 0, fr_pwm = 0, rr_pwm = 0, rl_pwm = 0;
+// Current PWM value sent to the motors (double because of PID)
+double fl_pwm = 0, fr_pwm = 0, rr_pwm = 0, rl_pwm = 0;
 
-// Error integrals for PID
-float fl_i = 0, fr_i = 0, rl_i = 0, rr_i = 0;
+/* ----------------------------------- PID ---------------------------------- */
 
-bool PID_enabled = false;
+// These default to off
+PID fl_PID(&fl_vel, &fl_pwm, &target_fl_vel, Kp, Ki, Kd, DIRECT);
+PID fr_PID(&fr_vel, &fr_pwm, &target_fr_vel, Kp, Ki, Kd, DIRECT);
+PID rl_PID(&rl_vel, &rl_pwm, &target_rl_vel, Kp, Ki, Kd, DIRECT);
+PID rr_PID(&rr_vel, &rr_pwm, &target_rr_vel, Kp, Ki, Kd, DIRECT);
+
+void enable_PID() {
+    fl_PID.SetMode(1);
+    fr_PID.SetMode(1);
+    rl_PID.SetMode(1);
+    rr_PID.SetMode(1);
+}
+
+void disable_PID() {
+    fl_PID.SetMode(0);
+    fr_PID.SetMode(0);
+    rl_PID.SetMode(0);
+    rr_PID.SetMode(0);
+}
 
 /* -------------------------------- Encoders -------------------------------- */
 
@@ -164,10 +175,7 @@ void RL_tick() {
     }
 }
 
-// Designed so that it can be called once for each motor's set of variables,
-// i.e. calc_vel(fl_ticks, prev_fl_ticks, prev_fl_time, fl_vel). This is a bit
-// odd to use on globals, but the alternative is to copy paste this code 4 times.
-void calc_vel(volatile long &ticks, long &prev_ticks, unsigned long &prev_time, float &vel) {
+void calc_vel(volatile long &ticks, long &prev_ticks, unsigned long &prev_time, double &vel) {
     int local_ticks = 0;
 
     ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
@@ -175,35 +183,12 @@ void calc_vel(volatile long &ticks, long &prev_ticks, unsigned long &prev_time, 
     }
 
     long current_time = micros();
-    float deltaT = float(current_time - lastVelTime) / 1.0e6; // Interval in seconds
-    float velocity = (prev_ticks - local_ticks) / deltaT;
+    double deltaT = double(current_time - prev_time) / 1.0e6; // Interval in seconds
+    double velocity = (prev_ticks - local_ticks) / deltaT;
     prev_ticks = local_ticks;
     prev_time = current_time;
 
-    velocity = velocity / ENC_COUNTS_PER_REV * 60; // Converts counts/s to RPM
-
-    vel = filter(velocity);
-}
-
-/* ----------------------------------- PID ---------------------------------- */
-
-// Same design principal as calc_vel, see that comment. 
-void do_PID(float &target_vel, float &vel, float &eI, int &PWM) {
-    float error = target_vel - vel;
-
-    eI = eI + error * deltaT;
-
-    float u = Kp * error + Ki * eI;
-
-    // constrain u
-    if (abs(u) < PWM_MIN) {
-        u = 0;
-    } else if (abs(u) > PWM_MAX) {
-        // Sets u to the max PWM preserving the sign
-        u = PWM_MAX * ((u > 0) - (u < 0));
-    }
-
-    PWM = u;
+    vel = WHEEL_RADIUS * 2 * PI * (velocity / ENC_COUNTS_PER_REV); // Converts to m/s
 }
 
 /* ------------------------------- IR Sensors ------------------------------- */
@@ -396,7 +381,7 @@ void run_command(char cmd_sel, int arg1, int arg2, int arg3, int arg4) {
     case 'm':
         lastCmdTime = millis();
 
-        PID_enabled = false;
+        disable_PID();
 
         fl_pwm = arg1;
         fr_pwm = arg2;
@@ -440,11 +425,13 @@ void run_command(char cmd_sel, int arg1, int arg2, int arg3, int arg4) {
         Serial.println("OK");
         break;
 
-    // Max speed config
-    case 's':
-        PWM_MIN = arg1;
-        PWM_MAX = arg2;
-        PWM_TURN = arg3;
+    // Max pwm config
+    case 'p':
+        fl_PID.SetOutputLimits(arg1, arg2);
+        fr_PID.SetOutputLimits(arg1, arg2);
+        rl_PID.SetOutputLimits(arg1, arg2);
+        rr_PID.SetOutputLimits(arg1, arg2);
+
         Serial.println("OK");
         break;
 
@@ -471,15 +458,18 @@ void run_command(char cmd_sel, int arg1, int arg2, int arg3, int arg4) {
         target_rl_vel = arg3;
         target_rr_vel = arg4;
 
-        PID_enabled = true;
+        enable_PID();
 
         Serial.println("OK");
         break;
 
     // PID config
     case 'u':
-        Kp = arg1;
-        Ki = arg2;
+        fl_PID.SetTunings(arg1, arg2, arg3);
+        fr_PID.SetTunings(arg1, arg2, arg3);
+        rl_PID.SetTunings(arg1, arg2, arg3);
+        rr_PID.SetTunings(arg1, arg2, arg3);
+
         Serial.println("OK");
         break;
 
@@ -532,6 +522,12 @@ void setup() {
     analogWrite(R_ENA, 0);
     analogWrite(R_ENB, 0);
 
+    // PID config
+    fl_PID.SetSampleTime(PID_RATE);
+    fr_PID.SetSampleTime(PID_RATE);
+    rl_PID.SetSampleTime(PID_RATE);
+    rr_PID.SetSampleTime(PID_RATE);
+
     Serial.begin(BAUD_RATE);
 }
 
@@ -553,12 +549,12 @@ void loop() {
 
     if (currentTime - lastCmdTime > COMMAND_TIMEOUT) {
         // Stops robot if COMMAND_TIMEOUT ms have elapsed since the last command
+        disable_PID();
+
         fl_pwm = 0;
         fr_pwm = 0;
         rl_pwm = 0;
         rr_pwm = 0;
-
-        PID_enabled = false;
     } else if (currentTime - lastIRTime > IR_POLL) {
         // Checks the IR sensors if it has been at least IR_POLL ms since the last check
         lastIRTime = currentTime;
@@ -566,32 +562,25 @@ void loop() {
         updateIR();
 
         if (!checkClear()) {
+            disable_PID();
+
             fl_pwm = 0;
             fr_pwm = 0;
             rl_pwm = 0;
             rr_pwm = 0;
-
-            PID_enabled = false;
         }
     }
 
+    calc_vel(fl_ticks, prev_fl_ticks, prev_fl_time, fl_vel);
+    calc_vel(fr_ticks, prev_fr_ticks, prev_fr_time, fr_vel);
+    calc_vel(rl_ticks, prev_rl_ticks, prev_rl_time, rl_vel);
+    calc_vel(rr_ticks, prev_rr_ticks, prev_rr_time, rr_vel);
 
-    if (PID_enabled) {
-        calc_vel(fl_ticks, prev_fl_ticks, prev_fl_time, fl_vel);
-        do_PID(target_fl_vel, fl_vel, fl_i, fl_pwm);
-        
-        calc_vel(fr_ticks, prev_fr_ticks, prev_fr_time, fr_vel);
-        do_PID(target_fr_vel, fr_vel, fr_i, fr_pwm);
-        
-        calc_vel(rl_ticks, prev_rl_ticks, prev_rl_time, rl_vel);
-        do_PID(target_rl_vel, rl_vel, rl_i, rl_pwm);
-        
-        calc_vel(rr_ticks, prev_rr_ticks, prev_rr_time, rr_vel);
-        do_PID(target_rr_vel, rr_vel, rr_i, rr_pwm);
-    }
+    // Updates the PWM values if PID is enabled
+    fl_PID.Compute();
+    fr_PID.Compute();
+    rl_PID.Compute();
+    rr_PID.Compute();
 
     set_pwm();
-
-    // Converts seconds to milliseconds
-    delay(SAMPLING_TIME * 1000);
 }
