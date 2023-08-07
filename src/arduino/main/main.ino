@@ -12,8 +12,6 @@ int LINEAR_CLEAR_THRESHOLD = 25;
 // Distance in cm at which an IR sensor is considered blocked when turning
 int TURN_CLEAR_THRESHOLD = 20;
 
-// Values below PWM_MIN will be treated as 0
-const int PWM_MIN = 24; // 10% power
 // Values above PWM_MAX will be reduced to PWM_MAX
 const int PWM_MAX = 50; // 20% power
 
@@ -376,10 +374,10 @@ void run_command(char cmd_sel, int arg1, int arg2, int arg3, int arg4) {
 
     // Max PWM config
     case 's':
-        fl_PID.SetOutputLimits(arg1, arg2);
-        fr_PID.SetOutputLimits(arg1, arg2);
-        rl_PID.SetOutputLimits(arg1, arg2);
-        rr_PID.SetOutputLimits(arg1, arg2);
+        fl_PID.SetOutputLimits(-arg1, arg1);
+        fr_PID.SetOutputLimits(-arg1, arg1);
+        rl_PID.SetOutputLimits(-arg1, arg1);
+        rr_PID.SetOutputLimits(-arg1, arg1);
 
         Serial.println("OK");
         break;
@@ -538,6 +536,12 @@ void setup() {
     fr_PID.SetSampleTime(PID_RATE);
     rl_PID.SetSampleTime(PID_RATE);
     rr_PID.SetSampleTime(PID_RATE);
+
+    // Constrains the PID output to +- the default PWM_MAX
+    fl_PID.SetOutputLimits(-PWM_MAX, PWM_MAX);
+    fr_PID.SetOutputLimits(-PWM_MAX, PWM_MAX);
+    rl_PID.SetOutputLimits(-PWM_MAX, PWM_MAX);
+    rr_PID.SetOutputLimits(-PWM_MAX, PWM_MAX);
 
     Serial.begin(BAUD_RATE);
 }
