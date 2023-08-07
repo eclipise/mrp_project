@@ -1,3 +1,6 @@
+#include <filters.h>
+#include <filters_defs.h>
+
 #include <PID_v1.h>
 #include <SharpIR.h>
 #include <util/atomic.h>
@@ -8,20 +11,20 @@
 
 // Distance in cm at which an IR sensor is considered blocked when moving
 // forward or backwards
-int LINEAR_CLEAR_THRESHOLD = 25;
+int LINEAR_CLEAR_THRESHOLD = 20;
 // Distance in cm at which an IR sensor is considered blocked when turning
-int TURN_CLEAR_THRESHOLD = 20;
+int TURN_CLEAR_THRESHOLD = 15;
 
 // Values above PWM_MAX will be reduced to PWM_MAX
-const int PWM_MAX = 50; // 20% power
+const int PWM_MAX = 255;
 
 // Time in milliseconds to continue the last command before stopping, in absence
 // of a new command.
-unsigned COMMAND_TIMEOUT = 200;
+unsigned COMMAND_TIMEOUT = 1000;
 // Should always be greater than 30 ms to prevent an internal delay in SharpIR.
 const unsigned IR_POLL = 200;
 
-const unsigned PID_RATE = 20;
+const unsigned PID_RATE = 50;
 
 // ACS712 ammeter constants
 const float AMMETER_VOLTAGE = 5.0;
@@ -33,9 +36,19 @@ const int ENC_COUNTS_PER_REV = 600;
 const double WHEEL_RADIUS = 0.0762; // meters
 
 // Default PID config
-const int Kp = 2;
-const int Ki = 5;
-const int Kd = 1;
+const double Kp = 7.5;
+const double Ki = 15;
+const double Kd = 0.2;
+
+// Config for velocity low-pass filter 
+const float CUTOFF_FREQ = 5.0;
+const float SAMPLING_TIME = 0.005; // Seconds
+IIR::ORDER ORD = IIR::ORDER::OD1;
+
+Filter fl_filter(CUTOFF_FREQ, SAMPLING_TIME, ORD);
+Filter fr_filter(CUTOFF_FREQ, SAMPLING_TIME, ORD);
+Filter rl_filter(CUTOFF_FREQ, SAMPLING_TIME, ORD);
+Filter rr_filter(CUTOFF_FREQ, SAMPLING_TIME, ORD);
 
 /* ---------------------------- Arduino pin setup --------------------------- */
 
@@ -173,20 +186,22 @@ void RR_tick() {
     }
 }
 
-void calc_vel(volatile long &ticks, long &prev_ticks, unsigned long &prev_time, double &vel) {
-    int local_ticks = 0;
+void calc_vel(volatile long &ticks, long &prev_ticks, unsigned long &prev_time, double &vel, Filter &filt) {
+    long local_ticks = 0;
 
     ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
         local_ticks = ticks;
     }
 
-    long current_time = micros();
+    unsigned long current_time = micros();
     double deltaT = double(current_time - prev_time) / 1.0e6; // Interval in seconds
-    double velocity = (prev_ticks - local_ticks) / deltaT;
+    double velocity = (local_ticks - prev_ticks) / deltaT;
     prev_ticks = local_ticks;
     prev_time = current_time;
 
-    vel = (velocity / ENC_COUNTS_PER_REV) * 2 * PI; // Converts to rad/s
+    velocity = (velocity / (double)ENC_COUNTS_PER_REV) * 2 * PI; // Converts to rad/s
+
+    vel = filt.filterIn(velocity);
 }
 
 /* ------------------------------- IR Sensors ------------------------------- */
@@ -560,9 +575,20 @@ void loop() {
         }
     }
 
-    unsigned long currentTime = millis();
+    calc_vel(fl_ticks, prev_fl_ticks, prev_fl_time, fl_vel, fl_filter);
+    calc_vel(fr_ticks, prev_fr_ticks, prev_fr_time, fr_vel, fr_filter);
+    calc_vel(rl_ticks, prev_rl_ticks, prev_rl_time, rl_vel, rl_filter);
+    calc_vel(rr_ticks, prev_rr_ticks, prev_rr_time, rr_vel, rr_filter);
 
-    if (currentTime - lastCmdTime > COMMAND_TIMEOUT) {
+    // Updates the PWM values if PID is enabled
+    fl_PID.Compute();
+    fr_PID.Compute();
+    rl_PID.Compute();
+    rr_PID.Compute();
+
+    unsigned long current_time = millis();
+    
+    if (current_time - lastCmdTime > COMMAND_TIMEOUT) {
         // Stops robot if COMMAND_TIMEOUT ms have elapsed since the last command
         disable_PID();
 
@@ -570,32 +596,21 @@ void loop() {
         fr_pwm = 0;
         rl_pwm = 0;
         rr_pwm = 0;
-    } else if (currentTime - lastIRTime > IR_POLL) {
+    } else if (current_time - lastIRTime > IR_POLL) {
         // Checks the IR sensors if it has been at least IR_POLL ms since the last check
-        lastIRTime = currentTime;
+        lastIRTime = current_time;
 
         updateIR();
 
         if (!checkClear()) {
             disable_PID();
-
+            
             fl_pwm = 0;
             fr_pwm = 0;
             rl_pwm = 0;
             rr_pwm = 0;
         }
     }
-
-    calc_vel(fl_ticks, prev_fl_ticks, prev_fl_time, fl_vel);
-    calc_vel(fr_ticks, prev_fr_ticks, prev_fr_time, fr_vel);
-    calc_vel(rl_ticks, prev_rl_ticks, prev_rl_time, rl_vel);
-    calc_vel(rr_ticks, prev_rr_ticks, prev_rr_time, rr_vel);
-
-    // Updates the PWM values if PID is enabled
-    fl_PID.Compute();
-    fr_PID.Compute();
-    rl_PID.Compute();
-    rr_PID.Compute();
 
     set_pwm();
 }
