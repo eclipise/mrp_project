@@ -1,0 +1,2 @@
+PID by Brett Beauregard Version 1.2.0
+SharpIR by Giuseppe Masino Version 2.0.1
