@@ -12,7 +12,7 @@
                 <param name="device">/dev/ttyACM0</param> <!-- TODO -->
                 <param name="baud_rate">57600</param>
                 <param name="timeout_ms">1000</param> <!-- This is for comms, not commands -->
-                <param name="enc_counts_per_rev">40</param>
+                <param name="enc_counts_per_rev">600</param>
 
             </hardware>
             

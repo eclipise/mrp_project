@@ -29,7 +29,7 @@ const float AMMETER_SENSITIVITY = 0.066;
 const int AMMETER_MAX = 1024;   // Ammeter raw value is in range [0, 1024]
 const float MIN_CURRENT = 0.25; // Values below this are treated as 0 amps
 
-const int ENC_COUNTS_PER_REV = 40;
+const int ENC_COUNTS_PER_REV = 600;
 const double WHEEL_RADIUS = 0.0762; // meters
 
 // Default PID config
