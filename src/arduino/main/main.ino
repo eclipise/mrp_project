@@ -110,16 +110,16 @@ int fl_dist, fc_dist, fr_dist, rl_dist, rr_dist;
 volatile long fl_ticks, fr_ticks, rl_ticks, rr_ticks;
 
 // Tick value at last velocity calculation
-long prev_fl_ticks = 0, prev_fr_ticks = 0, prev_rl_ticks = 0, prev_rr_ticks = 0;
+long fl_ticks_prev = 0, fr_ticks_prev = 0, rl_ticks_prev = 0, rr_ticks_prev = 0;
 
 // Time of last velocity calculation in microseconds
-unsigned long prev_fl_time = 0, prev_fr_time = 0, prev_rl_time = 0, prev_rr_time = 0;
+unsigned long fl_time_prev = 0, fr_time_prev = 0, rl_time_prev = 0, rr_time_prev = 0;
 
 // Current velocity in rad/s
 double fl_vel = 0, fr_vel = 0, rl_vel = 0, rr_vel = 0;
 
 // Desired velocity in rad/s
-double target_fl_vel = 0, target_fr_vel = 0, target_rl_vel = 0, target_rr_vel = 0;
+double fl_vel_target = 0, fr_vel_target = 0, rl_vel_target = 0, rr_vel_target = 0;
 
 // Current PWM value sent to the motors (double because of PID)
 double fl_pwm = 0, fr_pwm = 0, rl_pwm = 0, rr_pwm = 0;
@@ -127,10 +127,10 @@ double fl_pwm = 0, fr_pwm = 0, rl_pwm = 0, rr_pwm = 0;
 /* ----------------------------------- PID ---------------------------------- */
 
 // These default to off
-PID fl_PID(&fl_vel, &fl_pwm, &target_fl_vel, Kp, Ki, Kd, DIRECT);
-PID fr_PID(&fr_vel, &fr_pwm, &target_fr_vel, Kp, Ki, Kd, DIRECT);
-PID rl_PID(&rl_vel, &rl_pwm, &target_rl_vel, Kp, Ki, Kd, DIRECT);
-PID rr_PID(&rr_vel, &rr_pwm, &target_rr_vel, Kp, Ki, Kd, DIRECT);
+PID fl_PID(&fl_vel, &fl_pwm, &fl_vel_target, Kp, Ki, Kd, DIRECT);
+PID fr_PID(&fr_vel, &fr_pwm, &fr_vel_target, Kp, Ki, Kd, DIRECT);
+PID rl_PID(&rl_vel, &rl_pwm, &rl_vel_target, Kp, Ki, Kd, DIRECT);
+PID rr_PID(&rr_vel, &rr_pwm, &rr_vel_target, Kp, Ki, Kd, DIRECT);
 
 void enable_PID() {
     fl_PID.SetMode(1);
@@ -377,10 +377,10 @@ void run_command(char cmd_sel, int arg1, int arg2, int arg3, int arg4) {
     case 'm':
         lastCmdTime = millis();
 
-        target_fl_vel = arg1;
-        target_fr_vel = arg2;
-        target_rl_vel = arg3;
-        target_rr_vel = arg4;
+        fl_vel_target = arg1;
+        fr_vel_target = arg2;
+        rl_vel_target = arg3;
+        rr_vel_target = arg4;
 
         enable_PID();
 
@@ -575,10 +575,10 @@ void loop() {
         }
     }
 
-    calc_vel(fl_ticks, prev_fl_ticks, prev_fl_time, fl_vel, fl_filter);
-    calc_vel(fr_ticks, prev_fr_ticks, prev_fr_time, fr_vel, fr_filter);
-    calc_vel(rl_ticks, prev_rl_ticks, prev_rl_time, rl_vel, rl_filter);
-    calc_vel(rr_ticks, prev_rr_ticks, prev_rr_time, rr_vel, rr_filter);
+    calc_vel(fl_ticks, fl_ticks_prev, fl_time_prev, fl_vel, fl_filter);
+    calc_vel(fr_ticks, fr_ticks_prev, fr_time_prev, fr_vel, fr_filter);
+    calc_vel(rl_ticks, rl_ticks_prev, rl_time_prev, rl_vel, rl_filter);
+    calc_vel(rr_ticks, rr_ticks_prev, rr_time_prev, rr_vel, rr_filter);
 
     // Updates the PWM values if PID is enabled
     fl_PID.Compute();
