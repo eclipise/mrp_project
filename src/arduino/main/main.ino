@@ -16,7 +16,9 @@ int LINEAR_CLEAR_THRESHOLD = 20;
 int TURN_CLEAR_THRESHOLD = 15;
 
 // Values above PWM_MAX will be reduced to PWM_MAX
-const int PWM_MAX = 255;
+int PWM_MAX = 255;
+// Values below PWM_MIN will be reduced to 0
+int PWM_MIN = 15;
 
 // Time in milliseconds to continue the last command before stopping, in absence
 // of a new command.
@@ -253,8 +255,19 @@ bool checkClear() {
 
 /* --------------------------------- Motors --------------------------------- */
 
+void constrain_pwm(int &pwm) {
+    if (abs(pwm) < PWM_MIN) { 
+        pwm = 0;
+    } else if (abs(pwm) > PWM_MAX) {
+        // Sets the PWM to the max value, but with the same sign
+        pwm = PWM_MAX * ((pwm > 0) - (pwm < 0));
+    }
+}
+
 void set_pwm() {
     // Front left
+    constrain_pwm(fl_pwm);
+    
     if (fl_pwm > 0) {
         // Forward
         digitalWrite(L_INT1, 1);
@@ -278,6 +291,8 @@ void set_pwm() {
     analogWrite(L_ENA, abs(fl_pwm));
 
     // Front right
+    constrain_pwm(fr_pwm);
+
     if (fr_pwm > 0) {
         // Forward
         digitalWrite(R_INT1, 1);
@@ -299,6 +314,8 @@ void set_pwm() {
     analogWrite(R_ENA, abs(fr_pwm));
 
     // Rear left
+    constrain_pwm(rl_pwm);
+
     if (rl_pwm > 0) {
         // Forward
         digitalWrite(L_INT3, 1);
@@ -320,6 +337,8 @@ void set_pwm() {
     analogWrite(L_ENB, abs(rl_pwm));
 
     // Rear right
+    constrain_pwm(rr_pwm);
+
     if (rr_pwm > 0) {
         // Forward
         digitalWrite(R_INT3, 0);
@@ -389,10 +408,13 @@ void run_command(char cmd_sel, int arg1, int arg2, int arg3, int arg4) {
 
     // Max PWM config
     case 's':
-        fl_PID.SetOutputLimits(-arg1, arg1);
-        fr_PID.SetOutputLimits(-arg1, arg1);
-        rl_PID.SetOutputLimits(-arg1, arg1);
-        rr_PID.SetOutputLimits(-arg1, arg1);
+        PWM_MIN = arg1;
+        PWM_MAX = arg2;
+
+        fl_PID.SetOutputLimits(-PWM_MAX, PWM_MAX);
+        fr_PID.SetOutputLimits(-PWM_MAX, PWM_MAX);
+        rl_PID.SetOutputLimits(-PWM_MAX, PWM_MAX);
+        rr_PID.SetOutputLimits(-PWM_MAX, PWM_MAX);
 
         Serial.println("OK");
         break;
