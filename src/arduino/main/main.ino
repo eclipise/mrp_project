@@ -255,7 +255,7 @@ bool checkClear() {
 
 /* --------------------------------- Motors --------------------------------- */
 
-void constrain_pwm(int &pwm) {
+void constrain_pwm(double &pwm) {
     if (abs(pwm) < PWM_MIN) { 
         pwm = 0;
     } else if (abs(pwm) > PWM_MAX) {
