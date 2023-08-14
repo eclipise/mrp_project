@@ -65,25 +65,41 @@ def generate_launch_description():
     )
 
     slam = IncludeLaunchDescription(
-                PythonLaunchDescriptionSource([os.path.join(
-                    get_package_share_directory("slam_toolbox"),'launch','online_async_launch.py'
-                )]), launch_arguments={'use_sim_time': 'true'}.items()
+        PythonLaunchDescriptionSource([os.path.join(
+            get_package_share_directory("slam_toolbox"),'launch','online_async_launch.py'
+        )]), launch_arguments={'use_sim_time': 'true'}.items()
     )
 
+    # delayed_slam = RegisterEventHandler(
+    #     OnProcessExit(
+    #         target_action=diff_drive_spawner,
+    #         on_exit=slam
+    #     )
+    # )
+
+    nav2_params_file = os.path.join(get_package_share_directory(package_name), 'config', 'nav2_params.yaml')
+
     nav2 = IncludeLaunchDescription(
-                PythonLaunchDescriptionSource([os.path.join(
-                    get_package_share_directory("nav2_bringup"),'launch','navigation_launch.py'
-                )]), launch_arguments={'use_sim_time': 'true'}.items()
+        PythonLaunchDescriptionSource([os.path.join(
+            get_package_share_directory("nav2_bringup"),'launch','navigation_launch.py'
+        )]), launch_arguments={'use_sim_time': 'true', 'params_file': nav2_params_file}.items()
     )
+
+    # delayed_nav2 = RegisterEventHandler(
+    #     OnProcessExit(
+    #         target_action=diff_drive_spawner,
+    #         on_exit=nav2
+    #     )
+    # )
 
     # Launch them all!
     return LaunchDescription([
         rsp,
-        slam,
-        nav2,
         twist_mux,
         gazebo,
         spawn_entity,
         delayed_diff_drive_spawner,
         joint_broad_spawner,
+        # slam,
+        # nav2,
     ])
