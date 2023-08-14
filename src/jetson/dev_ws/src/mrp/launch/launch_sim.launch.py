@@ -64,12 +64,26 @@ def generate_launch_description():
         arguments=["joint_broad"],
     )
 
+    slam = IncludeLaunchDescription(
+                PythonLaunchDescriptionSource([os.path.join(
+                    get_package_share_directory("slam_toolbox"),'launch','online_async_launch.py'
+                )]), launch_arguments={'use_sim_time': 'true'}.items()
+    )
+
+    nav2 = IncludeLaunchDescription(
+                PythonLaunchDescriptionSource([os.path.join(
+                    get_package_share_directory("nav2_bringup"),'launch','navigation_launch.py'
+                )]), launch_arguments={'use_sim_time': 'true'}.items()
+    )
+
     # Launch them all!
     return LaunchDescription([
         rsp,
+        slam,
+        nav2,
         twist_mux,
         gazebo,
         spawn_entity,
         delayed_diff_drive_spawner,
-        joint_broad_spawner
+        joint_broad_spawner,
     ])
