@@ -5,7 +5,7 @@ import os
 from ament_index_python.packages import get_package_share_directory
 
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription, RegisterEventHandler
+from launch.actions import IncludeLaunchDescription, TimerAction, RegisterEventHandler
 from launch.event_handlers import OnProcessExit
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 
@@ -64,18 +64,13 @@ def generate_launch_description():
         arguments=["joint_broad"],
     )
 
+    slam_params_file = os.path.join(get_package_share_directory(package_name), 'config', 'slam_params.yaml')
+    
     slam = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([os.path.join(
             get_package_share_directory("slam_toolbox"),'launch','online_async_launch.py'
-        )]), launch_arguments={'use_sim_time': 'true'}.items()
+        )]), launch_arguments={'use_sim_time': 'true', 'params_file': slam_params_file}.items()
     )
-
-    # delayed_slam = RegisterEventHandler(
-    #     OnProcessExit(
-    #         target_action=diff_drive_spawner,
-    #         on_exit=slam
-    #     )
-    # )
 
     nav2_params_file = os.path.join(get_package_share_directory(package_name), 'config', 'nav2_params.yaml')
 
@@ -85,12 +80,7 @@ def generate_launch_description():
         )]), launch_arguments={'use_sim_time': 'true', 'params_file': nav2_params_file}.items()
     )
 
-    # delayed_nav2 = RegisterEventHandler(
-    #     OnProcessExit(
-    #         target_action=diff_drive_spawner,
-    #         on_exit=nav2
-    #     )
-    # )
+    delayed_nav2 = TimerAction(period=6.0, actions=[nav2])
 
     # Launch them all!
     return LaunchDescription([
@@ -100,6 +90,6 @@ def generate_launch_description():
         spawn_entity,
         delayed_diff_drive_spawner,
         joint_broad_spawner,
-        # slam,
-        # nav2,
+        slam,
+        delayed_nav2,
     ])
