@@ -525,7 +525,7 @@ void loop() {
     if (current_time - lastCmdTime > COMMAND_TIMEOUT) {
         // Stops robot if COMMAND_TIMEOUT ms have elapsed since the last command
         set_pwm(0, 0, 0, 0);
-        Serial.println("Timeout");
+        
     } else if (current_time - lastIRTime > IR_POLL) {
         // Checks the IR sensors if it has been at least IR_POLL ms since the last check
         lastIRTime = current_time;
