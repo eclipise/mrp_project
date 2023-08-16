@@ -235,9 +235,6 @@ void calc_vel(volatile long &ticks, long &prev_ticks, unsigned long &prev_time, 
     vel = (velocity / (double)ENC_COUNTS_PER_REV) * 2 * PI; // Converts to rad/s
 }
 
-void set_vel(double fl_vel, double fr_vel, double rl_vel, double rr_vel) {
-}
-
 void run_command(char cmd_sel, float arg1, float arg2, float arg3, float arg4) {
     switch (cmd_sel) {
     // Set motor PWM
