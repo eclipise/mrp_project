@@ -83,36 +83,6 @@ void rr_tick() {
     }
 }
 
-void setup() {
-    // Sets all motor control pins to output mode
-    pinMode(L_ENA, OUTPUT);
-    pinMode(L_ENB, OUTPUT);
-    pinMode(L_INT1, OUTPUT);
-    pinMode(L_INT2, OUTPUT);
-    pinMode(L_INT3, OUTPUT);
-    pinMode(L_INT4, OUTPUT);
-    pinMode(R_ENA, OUTPUT);
-    pinMode(R_ENB, OUTPUT);
-    pinMode(R_INT1, OUTPUT);
-    pinMode(R_INT2, OUTPUT);
-    pinMode(R_INT3, OUTPUT);
-    pinMode(R_INT4, OUTPUT);
-
-    // Sets the encoder pins to input mode
-    pinMode(FL_ENC, INPUT);
-    pinMode(FR_ENC, INPUT);
-    pinMode(RL_ENC, INPUT);
-    pinMode(RR_ENC, INPUT);
-
-    // Attaches interrupts to encoder pins, calls given functions on rising edge
-    attachInterrupt(digitalPinToInterrupt(FL_ENC), fl_tick, RISING);
-    attachInterrupt(digitalPinToInterrupt(FR_ENC), fr_tick, RISING);
-    attachInterrupt(digitalPinToInterrupt(RL_ENC), rl_tick, RISING);
-    attachInterrupt(digitalPinToInterrupt(RR_ENC), rr_tick, RISING);
-
-    Serial.begin(57600);
-}
-
 void print_ticks() {
     Serial.print("FL F: ");
     for (int i = 0; i < 256; i++) {
