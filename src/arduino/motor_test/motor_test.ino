@@ -240,7 +240,7 @@ void set_vel(double fl_vel, double fr_vel, double rl_vel, double rr_vel) {
 
 void run_command(char cmd_sel, float arg1, float arg2, float arg3, float arg4) {
     switch (cmd_sel) {
-    // Set motor PWM (open loop)
+    // Set motor PWM
     case 'p':
         set_pwm(int(arg1), int(arg2), int(arg3), int(arg4));
 
@@ -253,31 +253,39 @@ void run_command(char cmd_sel, float arg1, float arg2, float arg3, float arg4) {
         int fr_pwm;
         int rl_pwm;
         int rr_pwm;
-        
+
         // Chooses lookup table based on direction
         if (arg1 > 0) {
             fl_pwm = lookup_pwm(FL_LOOKUP_F, arg1);
         } else {
-            fl_pwm = -(lookup_pwm(FL_LOOKUP_R, arg1));
+            fl_pwm = -(lookup_pwm(FL_LOOKUP_R, abs(arg1)));
         }
 
         if (arg2 > 0) {
             fr_pwm = lookup_pwm(FR_LOOKUP_F, arg2);
         } else {
-            fr_pwm = -(lookup_pwm(FR_LOOKUP_R, arg2));
+            fr_pwm = -(lookup_pwm(FR_LOOKUP_R, abs(arg2)));
         }
 
         if (arg3 > 0) {
             rl_pwm = lookup_pwm(RL_LOOKUP_F, arg3);
         } else {
-            rl_pwm = -(lookup_pwm(RL_LOOKUP_R, arg3));
+            rl_pwm = -(lookup_pwm(RL_LOOKUP_R, abs(arg3)));
         }
 
         if (arg4 > 0) {
             rr_pwm = lookup_pwm(RR_LOOKUP_F, arg4);
         } else {
-            rr_pwm = -(lookup_pwm(RR_LOOKUP_R, arg4));
+            rr_pwm = -(lookup_pwm(RR_LOOKUP_R, abs(arg4)));
         }
+
+        Serial.print(fl_pwm);
+        Serial.print(" ");
+        Serial.print(fr_pwm);
+        Serial.print(" ");
+        Serial.print(rl_pwm);
+        Serial.print(" ");
+        Serial.println(rr_pwm);
 
         set_pwm(fl_pwm, fr_pwm, rl_pwm, rr_pwm);
 
@@ -371,17 +379,24 @@ void setup() {
 }
 
 void loop() {
-    if (Serial.available() > 0) {
-        String command = Serial.readStringUntil('\n');
-
-        char cmd_sel = '\0';
-        float arg1 = 0, arg2 = 0, arg3 = 0, arg4 = 0;
-
-        int num_parsed = sscanf(command.c_str(), "%c %f %f %f %f", &cmd_sel, &arg1, &arg2, &arg3, &arg4);
-
-        if (num_parsed > 0) {
-            run_command(cmd_sel, arg1, arg2, arg3, arg4);
+    if (Serial.available() > 0) {    
+        char cmd_sel = Serial.read();
+        float arg[4] = {0, 0, 0, 0};
+        short num_args = 0;
+        
+        if (cmd_sel == 'p' || cmd_sel == 'm') {
+            num_args = 4;
         }
+
+
+        for (int i = 0; i < num_args; i++) {
+            arg[i] = Serial.parseFloat();
+        }
+
+        // Consume the remainder of the message
+        Serial.readStringUntil('\n');
+        
+        run_command(cmd_sel, arg[0], arg[1], arg[2], arg[3]);
     }
 
     calc_vel(fl_ticks, fl_ticks_prev, fl_time_prev, fl_vel);
