@@ -69,23 +69,23 @@ def generate_launch_description():
         )
     )
 
-    slam_params_file = os.path.join(get_package_share_directory(package_name), 'config', 'slam_params.yaml')
+    # slam_params_file = os.path.join(get_package_share_directory(package_name), 'config', 'slam_params.yaml')
     
-    slam = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([os.path.join(
-            get_package_share_directory("slam_toolbox"),'launch','online_async_launch.py'
-        )]), launch_arguments={'use_sim_time': 'false', 'params_file': slam_params_file}.items()
-    )
+    # slam = IncludeLaunchDescription(
+    #     PythonLaunchDescriptionSource([os.path.join(
+    #         get_package_share_directory("slam_toolbox"),'launch','online_async_launch.py'
+    #     )]), launch_arguments={'use_sim_time': 'false', 'params_file': slam_params_file}.items()
+    # )
 
-    nav2_params_file = os.path.join(get_package_share_directory(package_name), 'config', 'nav2_params.yaml')
+    # nav2_params_file = os.path.join(get_package_share_directory(package_name), 'config', 'nav2_params.yaml')
 
-    nav2 = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([os.path.join(
-            get_package_share_directory("nav2_bringup"),'launch','navigation_launch.py'
-        )]), launch_arguments={'use_sim_time': 'false', 'params_file': nav2_params_file}.items()
-    )
+    # nav2 = IncludeLaunchDescription(
+    #     PythonLaunchDescriptionSource([os.path.join(
+    #         get_package_share_directory("nav2_bringup"),'launch','navigation_launch.py'
+    #     )]), launch_arguments={'use_sim_time': 'false', 'params_file': nav2_params_file}.items()
+    # )
 
-    delayed_nav2 = TimerAction(period=6.0, actions=[nav2])
+    # delayed_nav2 = TimerAction(period=6.0, actions=[nav2])
 
     # Launch them all!
     return LaunchDescription([
@@ -94,6 +94,6 @@ def generate_launch_description():
         delayed_controller_manager,
         delayed_diff_drive_spawner,
         delayed_joint_broad_spawner,
-        slam, 
-        delayed_nav2,
+        # slam, 
+        # delayed_nav2,
     ])
