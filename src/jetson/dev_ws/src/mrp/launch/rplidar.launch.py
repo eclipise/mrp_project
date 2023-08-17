@@ -13,7 +13,7 @@ def generate_launch_description():
                 "frame_id": "laser_frame",
                 "angle_compensate": True,
                 "scan_mode": "Standard",
-                "inverted": True
+                "flip_x_axis": True
             }]
         )
     ])
