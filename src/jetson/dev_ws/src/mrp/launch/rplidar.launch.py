@@ -12,7 +12,8 @@ def generate_launch_description():
             parameters=[{
                 "frame_id": "laser_frame",
                 "angle_compensate": True,
-                "scan_mode": "Standard"
+                "scan_mode": "Standard",
+                "inverted": True
             }]
         )
     ])
