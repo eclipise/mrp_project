@@ -82,7 +82,7 @@ class ArduinoComm {
     }
 
     // function modified
-    void read_encoder_values(int &val_1, int &val_2, int &val_3, int &val_4) {
+    void read_encoder_values(long &val_1, long &val_2, long &val_3, long &val_4) {
         std::string response = send_msg("e\n");
 
         std::stringstream ss(response);
@@ -106,43 +106,19 @@ class ArduinoComm {
         val_4 = value[3];
     }
 
-    // function added
-    void read_velocity(double &val_1, double &val_2, double &val_3, double &val_4) {
-        std::string response = send_msg("v\n");
-
-        std::stringstream ss(response);
-
-        int i = 0;
-        double value[4];
-
-        // Reads 4 doubles from the response
-        while (ss >> value[i]) {
-            i++;
-
-            // This should be redundant, but will prevent unexpected values overflowing the array
-            if (i >= 4) {
-                break;
-            }
-        }
-
-        val_1 = value[0];
-        val_2 = value[1];
-        val_3 = value[2];
-        val_4 = value[3];
-    }
-
     // function modified
-    void set_motor_values(int val_1, int val_2, int val_3, int val_4) {
+    void set_motor_values(double val_1, double val_2, double val_3, double val_4) {
         std::stringstream ss;
         ss << "m " << val_1 << " " << val_2 << " " << val_3 << " " << val_4 << "\n";
         send_msg(ss.str());
     }
 
-    void set_pid_values(int Kp, int Ki, int Kd) {
-        std::stringstream ss;
-        ss << "p " << Kp << " " << Ki << " " << Kd << "\n";
-        send_msg(ss.str());
-    }
+    // function removed
+    // void set_pid_values(int Kp, int Ki, int Kd) {
+    //     std::stringstream ss;
+    //     ss << "p " << Kp << " " << Ki << " " << Kd << "\n";
+    //     send_msg(ss.str());
+    // }
 
   private:
     LibSerial::SerialPort serial_conn_;

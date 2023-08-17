@@ -18,14 +18,6 @@ hardware_interface::CallbackReturn ArduinoInterface::on_init(const hardware_inte
     cfg_.timeout_ms = std::stoi(info_.hardware_parameters["timeout_ms"]);
     cfg_.enc_counts_per_rev = std::stoi(info_.hardware_parameters["enc_counts_per_rev"]);
 
-    if (info_.hardware_parameters.count("pid_p") > 0) {
-        cfg_.pid_p = std::stoi(info_.hardware_parameters["pid_p"]);
-        cfg_.pid_i = std::stoi(info_.hardware_parameters["pid_i"]);
-        cfg_.pid_d = std::stoi(info_.hardware_parameters["pid_d"]);
-    } else {
-        RCLCPP_INFO(rclcpp::get_logger("ArduinoInterface"), "PID values not supplied, using defaults.");
-    }
-
     rl_wheel_.setup(cfg_.fl_wheel_name, cfg_.enc_counts_per_rev);
     rr_wheel_.setup(cfg_.fr_wheel_name, cfg_.enc_counts_per_rev);
     fl_wheel_.setup(cfg_.rl_wheel_name, cfg_.enc_counts_per_rev);
@@ -154,9 +146,7 @@ hardware_interface::CallbackReturn ArduinoInterface::on_activate(const rclcpp_li
         return hardware_interface::CallbackReturn::ERROR;
     }
 
-    if (cfg_.pid_p > 0) {
-        comm_.set_pid_values(cfg_.pid_p, cfg_.pid_i, cfg_.pid_d);
-    }
+    // Activation code goes here if needed
 
     RCLCPP_INFO(rclcpp::get_logger("ArduinoInterface"), "Successfully activated.");
 
@@ -179,7 +169,6 @@ hardware_interface::return_type ArduinoInterface::read(const rclcpp::Time & /*ti
     }
 
     comm_.read_encoder_values(fl_wheel_.enc, fr_wheel_.enc, rl_wheel_.enc, rr_wheel_.enc);
-    comm_.read_velocity(fl_wheel_.vel, fr_wheel_.vel, rl_wheel_.vel, rr_wheel_.vel);
 
     fl_wheel_.pos = fl_wheel_.calc_enc_angle();
     fr_wheel_.pos = fr_wheel_.calc_enc_angle();
@@ -194,7 +183,6 @@ hardware_interface::return_type ArduinoInterface::write(const rclcpp::Time & /*t
         return hardware_interface::return_type::ERROR;
     }
 
-    // TODO: verify that cmd is actually in radians per second
     comm_.set_motor_values(fl_wheel_.cmd, fr_wheel_.cmd, rl_wheel_.cmd, rr_wheel_.cmd);
 
     return hardware_interface::return_type::OK;

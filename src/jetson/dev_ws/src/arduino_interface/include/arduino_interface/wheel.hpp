@@ -1,4 +1,4 @@
-// From https://github.com/joshnewans/diffdrive_arduino/tree/humble
+// From https://github.com/joshnewans/diffdrive_arduino/tree/humble, modified
 
 #ifndef DIFFDRIVE_ARDUINO_WHEEL_HPP
 #define DIFFDRIVE_ARDUINO_WHEEL_HPP
@@ -9,7 +9,7 @@
 class Wheel {
   public:
     std::string name = "";
-    int enc = 0;
+    long enc = 0;
     double cmd = 0;
     double pos = 0;
     double vel = 0;

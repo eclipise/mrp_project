@@ -414,22 +414,22 @@ void run_command(char cmd_sel, float arg1, float arg2, float arg3, float arg4) {
 
     // Read encoders
     case 'e':
-        int local_fl_ticks;
+        long local_fl_ticks;
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
             local_fl_ticks = fl_ticks;
         }
 
-        int local_fr_ticks;
+        long local_fr_ticks;
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
             local_fr_ticks = fr_ticks;
         }
 
-        int local_rl_ticks;
+        long local_rl_ticks;
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
             local_rl_ticks = rl_ticks;
         }
 
-        int local_rr_ticks;
+        long local_rr_ticks;
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
             local_rr_ticks = rr_ticks;
         }
