@@ -63,10 +63,10 @@ const int RR_ENC = 21;
 
 // Sets up the IR sensors, second argument is the pin they're connected to
 SharpIR IR_FL(model, A1);
-SharpIR IR_FC(model, A5);
-SharpIR IR_FR(model, A2);
+SharpIR IR_FC(model, A2);
+SharpIR IR_FR(model, A3);
 SharpIR IR_RL(model, A4);
-SharpIR IR_RR(model, A3);
+SharpIR IR_RR(model, A5);
 
 // Pin for the ammeter
 #define AMMETER_PIN A0
