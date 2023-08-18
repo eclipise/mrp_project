@@ -181,9 +181,9 @@ void checkClear() {
     } else if (!areaClear()) {
         // If turning and area is not clear
         ir_blocked = true;
+    } else {
+        ir_blocked = false;
     }
-
-    ir_blocked = false;
 }
 
 /* --------------------------------- Motors --------------------------------- */
