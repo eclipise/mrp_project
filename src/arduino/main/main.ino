@@ -437,19 +437,6 @@ void run_command(char cmd_sel, float arg1, float arg2, float arg3, float arg4) {
         Serial.println(rr_dist);
         break;
 
-    // IR check
-    case 'c':
-        updateIR();
-        checkClear();
-        
-        if (ir_blocked) {
-            Serial.println("Blocked");
-        } else {
-            Serial.println("Clear");
-        }
-
-        break;
-
     // IR distance config
     case 'd':
         LINEAR_CLEAR_THRESHOLD = arg1;
