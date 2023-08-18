@@ -89,9 +89,15 @@ unsigned long lastIRTime = 0;
 // IR sensor data
 int fl_dist, fc_dist, fr_dist, rl_dist, rr_dist;
 
+// Whether the IR sensors are blocked for the current movement
+bool ir_blocked = true;
+
 // Any access to these variables must be wrapped in an ATOMIC_BLOCK to prevent
 // interrupts mid-read, since they are larger than 1 byte.
 volatile long fl_ticks, fr_ticks, rl_ticks, rr_ticks;
+
+// Whether the robot is trying to executing a movement command
+bool moving = false;
 
 /* -------------------------------- Encoders -------------------------------- */
 
@@ -162,22 +168,22 @@ bool areaClear() {
            rr_dist > TURN_CLEAR_THRESHOLD;
 }
 
-bool checkClear() {
+void checkClear() {
     // If not turning
     if (fl_moving_forward == fr_moving_forward) {
         if (fl_moving_forward && !frontClear()) {
             // If moving forward and front is not clear
-            return false;
+            ir_blocked = true;
         } else if (!fl_moving_forward && !backClear()) {
             // If moving backwards and rear is not clear
-            return false;
+            ir_blocked = true;
         }
     } else if (!areaClear()) {
         // If turning and area is not clear
-        return false;
+        ir_blocked = true;
     }
 
-    return true;
+    ir_blocked = false;
 }
 
 /* --------------------------------- Motors --------------------------------- */
@@ -217,6 +223,25 @@ int lookup_pwm(const short lookup_table[], float velocity) {
 }
 
 void set_pwm(int fl_pwm, int fr_pwm, int rl_pwm, int rr_pwm) {
+    if (fl_pwm == 0 && fr_pwm == 0 && rl_pwm == 0 && rr_pwm == 0){
+        moving = false;
+    } else if (!moving) {
+        // Ensures that the IRs are checked when starting to move
+        lastIRTime = millis();
+        updateIR();
+        checkClear();
+
+        moving = true;
+    }
+
+    // If the IRs are blocked, cancel the movement command
+    if (ir_blocked) {
+        fl_pwm = 0;
+        fr_pwm = 0;
+        rl_pwm = 0;
+        rr_pwm = 0;
+    }
+    
     // Front left
     if (fl_pwm > 0) {
         // Forward
@@ -402,7 +427,14 @@ void run_command(char cmd_sel, float arg1, float arg2, float arg3, float arg4) {
     // IR check
     case 'c':
         updateIR();
-        Serial.println(checkClear());
+        checkClear();
+        
+        if (ir_blocked) {
+            Serial.println("Blocked");
+        } else {
+            Serial.println("Clear");
+        }
+
         break;
 
     // IR distance config
@@ -522,19 +554,18 @@ void loop() {
 
     unsigned long current_time = millis();
     
-    if (current_time - lastCmdTime > COMMAND_TIMEOUT) {
-        // Stops robot if COMMAND_TIMEOUT ms have elapsed since the last command
-        set_pwm(0, 0, 0, 0);
-        
-    } else if (current_time - lastIRTime > IR_POLL) {
-        // Checks the IR sensors if it has been at least IR_POLL ms since the last check
-        lastIRTime = current_time;
-
-        updateIR();
-
-        if (!checkClear()) {
+    if (moving) {
+        if (current_time - lastCmdTime > COMMAND_TIMEOUT) {
+            // Stops robot if COMMAND_TIMEOUT ms have elapsed since the last command
             set_pwm(0, 0, 0, 0);
-            Serial.println("IR blocked");
+        } 
+        
+        if (current_time - lastIRTime > IR_POLL) {
+            // Checks the IR sensors if it has been at least IR_POLL ms since the last check
+            lastIRTime = current_time;
+
+            updateIR();
+            checkClear();
         }
     }
 }
