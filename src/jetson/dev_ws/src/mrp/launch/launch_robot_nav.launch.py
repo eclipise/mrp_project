@@ -69,6 +69,12 @@ def generate_launch_description():
         )
     )
 
+    rplidar = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([os.path.join(
+            get_package_share_directory("rplidar"),'launch','rplidar.launch.py'
+        )])
+    )
+
     slam_params_file = os.path.join(get_package_share_directory(package_name), 'config', 'slam_params.yaml')
     
     slam = IncludeLaunchDescription(
@@ -106,6 +112,7 @@ def generate_launch_description():
         delayed_controller_manager,
         delayed_diff_drive_spawner,
         delayed_joint_broad_spawner,
+        rplidar,
         delayed_slam, 
         delayed_nav2,
     ])
