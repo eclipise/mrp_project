@@ -91,7 +91,7 @@ void print_ticks() {
     }
     Serial.println();
 
-    Serial.print("FL B: ");
+    Serial.print("FL R: ");
     for (int i = 0; i < 256; i++) {
         Serial.print(fl_backward_ticks[i]);
         Serial.print(" ");
@@ -105,7 +105,7 @@ void print_ticks() {
     }
     Serial.println();
 
-    Serial.print("FR B: ");
+    Serial.print("FR R: ");
     for (int i = 0; i < 256; i++) {
         Serial.print(fr_backward_ticks[i]);
         Serial.print(" ");
@@ -119,7 +119,7 @@ void print_ticks() {
     }
     Serial.println();
 
-    Serial.print("RL B: ");
+    Serial.print("RL R: ");
     for (int i = 0; i < 256; i++) {
         Serial.print(rl_backward_ticks[i]);
         Serial.print(" ");
@@ -133,7 +133,7 @@ void print_ticks() {
     }
     Serial.println();
 
-    Serial.print("RR B: ");
+    Serial.print("RR R: ");
     for (int i = 0; i < 256; i++) {
         Serial.print(rr_backward_ticks[i]);
         Serial.print(" ");

@@ -106,9 +106,8 @@ int global_fl_pwm = 0, global_fr_pwm = 0;
 
 // Since the encoders only register ticks, not direction, these tick functions
 // fudge the direction by looking at whether the robot was last told to move
-// forward or backwards. This will usually work even for drift after the robot
-// has been told to stop, but won't catch movement in a different direction than
-// expected.
+// forward or backwards. This won't catch movement in a different direction than
+// expected, but that's rare.
 
 void FL_tick() {
     if (fl_moving_forward) {
@@ -193,16 +192,16 @@ void checkClear() {
 
 /* --------------------------------- Motors --------------------------------- */
 
-int lookup_pwm(const short lookup_table[], float velocity) {    
+int lookup_pwm(const short lookup_table[], float velocity) {
     short vel_short = short(velocity * 100);
 
     // Edge cases
-    if (vel_short == 0){
+    if (vel_short == 0) {
         return 0;
     } else if (vel_short >= lookup_table[255]) {
         return 255;
     }
-    
+
     // Modified binary search
     int left = 0;
     int right = 255;
@@ -218,7 +217,7 @@ int lookup_pwm(const short lookup_table[], float velocity) {
             return mid;
         }
     }
-    
+
     // Exact velocity not found, which is likely, so return nearest
     if (abs(lookup_table[left] - vel_short) < abs(lookup_table[right] - vel_short)) {
         return left;
@@ -228,11 +227,11 @@ int lookup_pwm(const short lookup_table[], float velocity) {
 }
 
 void set_pwm(int fl_pwm, int fr_pwm, int rl_pwm, int rr_pwm) {
-    if (fl_pwm == 0 && fr_pwm == 0 && rl_pwm == 0 && rr_pwm == 0){
+    if (fl_pwm == 0 && fr_pwm == 0 && rl_pwm == 0 && rr_pwm == 0) {
         moving = false;
     } else if (!moving) {
         // Ensures that the IRs are checked when starting to move
-        
+
         global_fl_pwm = fl_pwm;
         global_fr_pwm = fr_pwm;
 
@@ -254,7 +253,7 @@ void set_pwm(int fl_pwm, int fr_pwm, int rl_pwm, int rr_pwm) {
 
     global_fl_pwm = fl_pwm;
     global_fr_pwm = fr_pwm;
-    
+
     // Front left
     if (fl_pwm > 0) {
         // Forward
@@ -363,9 +362,9 @@ void run_command(char cmd_sel, float arg1, float arg2, float arg3, float arg4) {
     // Set motor PWM
     case 'p':
         lastCmdTime = millis();
-        
+
         set_pwm(int(arg1), int(arg2), int(arg3), int(arg4));
-        
+
         Serial.println("OK");
         break;
 
@@ -418,7 +417,7 @@ void run_command(char cmd_sel, float arg1, float arg2, float arg3, float arg4) {
 
     // Command timeout config
     case 't':
-        COMMAND_TIMEOUT = arg1;
+        COMMAND_TIMEOUT = int(arg1);
         Serial.println("OK");
         break;
 
@@ -439,8 +438,8 @@ void run_command(char cmd_sel, float arg1, float arg2, float arg3, float arg4) {
 
     // IR distance config
     case 'd':
-        LINEAR_CLEAR_THRESHOLD = arg1;
-        TURN_CLEAR_THRESHOLD = arg2;
+        LINEAR_CLEAR_THRESHOLD = int(arg1);
+        TURN_CLEAR_THRESHOLD = int(arg2);
         Serial.println("OK");
         break;
 
@@ -526,12 +525,12 @@ void setup() {
 }
 
 void loop() {
-    if (Serial.available() > 0) {    
+    if (Serial.available() > 0) {
         // Reads the first character of the message
         char cmd_sel = Serial.read();
         float arg[4] = {0, 0, 0, 0};
-        short num_args = 0; 
-        
+        short num_args = 0;
+
         // Determines how many arguments should be parsed based on command
         if (cmd_sel == 'p' || cmd_sel == 'm') {
             num_args = 4;
@@ -548,25 +547,25 @@ void loop() {
 
         // Consume the remainder of the message
         Serial.readStringUntil('\n');
-        
+
         run_command(cmd_sel, arg[0], arg[1], arg[2], arg[3]);
     }
 
     unsigned long current_time = millis();
-    
+
     if (moving) {
         if (current_time - lastCmdTime > COMMAND_TIMEOUT) {
             // Stops robot if COMMAND_TIMEOUT ms have elapsed since the last command
             set_pwm(0, 0, 0, 0);
-        } 
-        
+        }
+
         if (current_time - lastIRTime > IR_POLL) {
             // Checks the IR sensors if it has been at least IR_POLL ms since the last check
             lastIRTime = current_time;
 
             updateIR();
             checkClear();
-            
+
             if (ir_blocked) {
                 set_pwm(0, 0, 0, 0);
             }
