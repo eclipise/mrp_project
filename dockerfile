@@ -1,13 +1,13 @@
 # uses official ROS Humble image as a base
 FROM ros:humble
 
+RUN apt-get update
+
 # copies the workspace into the container
 COPY src/jetson/dev_ws /ros_ws
 
 # moves into the workspace
 WORKDIR /ros_ws
-
-RUN apt-get update
 
 # installs dependencies, explicitly skipping two that are only for simulation
 RUN rosdep install --from-paths src --ignore-src -y --skip-keys gazebo_ros2_control --skip-keys gazebo_ros_pkgs
