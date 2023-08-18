@@ -71,7 +71,7 @@ def generate_launch_description():
 
     rplidar = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([os.path.join(
-            get_package_share_directory("rplidar"),'launch','rplidar.launch.py'
+            get_package_share_directory("mrp"),'launch','rplidar.launch.py'
         )])
     )
 
