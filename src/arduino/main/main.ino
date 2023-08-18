@@ -99,6 +99,9 @@ volatile long fl_ticks, fr_ticks, rl_ticks, rr_ticks;
 // Whether the robot is trying to executing a movement command
 bool moving = false;
 
+// Inelegant solution to make checkClear accessible from loop()
+int global_fl_pwm = 0, global_fr_pwm = 0;
+
 /* -------------------------------- Encoders -------------------------------- */
 
 // Since the encoders only register ticks, not direction, these tick functions
@@ -170,13 +173,15 @@ bool areaClear() {
 
 void checkClear() {
     // If not turning
-    if (fl_moving_forward == fr_moving_forward) {
-        if (fl_moving_forward && !frontClear()) {
+    if (global_fl_pwm == global_fr_pwm) {
+        if (global_fl_pwm > 0 && !frontClear()) {
             // If moving forward and front is not clear
             ir_blocked = true;
-        } else if (!fl_moving_forward && !backClear()) {
+        } else if (global_fl_pwm < 0 && !backClear()) {
             // If moving backwards and rear is not clear
             ir_blocked = true;
+        } else {
+            ir_blocked = false;
         }
     } else if (!areaClear()) {
         // If turning and area is not clear
@@ -227,6 +232,10 @@ void set_pwm(int fl_pwm, int fr_pwm, int rl_pwm, int rr_pwm) {
         moving = false;
     } else if (!moving) {
         // Ensures that the IRs are checked when starting to move
+        
+        global_fl_pwm = fl_pwm;
+        global_fr_pwm = fr_pwm;
+
         lastIRTime = millis();
         updateIR();
         checkClear();
@@ -240,7 +249,11 @@ void set_pwm(int fl_pwm, int fr_pwm, int rl_pwm, int rr_pwm) {
         fr_pwm = 0;
         rl_pwm = 0;
         rr_pwm = 0;
+        moving = false;
     }
+
+    global_fl_pwm = fl_pwm;
+    global_fr_pwm = fr_pwm;
     
     // Front left
     if (fl_pwm > 0) {
@@ -566,6 +579,10 @@ void loop() {
 
             updateIR();
             checkClear();
+            
+            if (ir_blocked) {
+                set_pwm(0, 0, 0, 0);
+            }
         }
     }
 }
