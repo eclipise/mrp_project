@@ -16,4 +16,4 @@ RUN rosdep install --from-paths src --ignore-src -y --skip-keys gazebo_ros2_cont
 RUN . /opt/ros/humble/setup.sh && colcon build --symlink-install
 
 # sources ROS and the workspace, then starts the software
-# ENTRYPOINT ["/bin/bash", "-c", "source /opt/ros/humble/setup.bash && source install/setup.bash && ros2 launch mrp launch_robot.launch.py"]
+ENTRYPOINT ["/bin/bash", "-c", "source /opt/ros/humble/setup.bash && source install/setup.bash && ros2 launch mrp launch_robot_nav.launch.py"]
