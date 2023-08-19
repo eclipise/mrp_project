@@ -33,7 +33,7 @@ def generate_launch_description():
         remappings=[('/cmd_vel_out', '/diff_cont/cmd_vel_unstamped')]
     )
 
-    controller_params_file = os.path.join(get_package_share_directory(package_name), "config", "my_controllers.yaml")
+    controller_params_file = os.path.join(get_package_share_directory(package_name), "config", "controllers.yaml")
 
     controller_manager = Node(
         package="controller_manager",
