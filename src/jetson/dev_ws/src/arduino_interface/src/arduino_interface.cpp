@@ -127,18 +127,6 @@ hardware_interface::CallbackReturn ArduinoInterface::on_configure(const rclcpp_l
     return hardware_interface::CallbackReturn::SUCCESS;
 }
 
-hardware_interface::CallbackReturn ArduinoInterface::on_cleanup(const rclcpp_lifecycle::State & /*previous_state*/) {
-    RCLCPP_INFO(rclcpp::get_logger("ArduinoInterface"), "Cleaning up...");
-
-    if (comm_.connected()) {
-        comm_.disconnect();
-    }
-
-    RCLCPP_INFO(rclcpp::get_logger("ArduinoInterface"), "Successfully cleaned up.");
-
-    return hardware_interface::CallbackReturn::SUCCESS;
-}
-
 hardware_interface::CallbackReturn ArduinoInterface::on_activate(const rclcpp_lifecycle::State & /*previous_state*/) {
     RCLCPP_INFO(rclcpp::get_logger("ArduinoInterface"), "Activating...");
 
@@ -159,6 +147,18 @@ hardware_interface::CallbackReturn ArduinoInterface::on_deactivate(const rclcpp_
     // Deactivation code goes here if needed
 
     RCLCPP_INFO(rclcpp::get_logger("ArduinoInterface"), "Successfully deactivated.");
+
+    return hardware_interface::CallbackReturn::SUCCESS;
+}
+
+hardware_interface::CallbackReturn ArduinoInterface::on_cleanup(const rclcpp_lifecycle::State & /*previous_state*/) {
+    RCLCPP_INFO(rclcpp::get_logger("ArduinoInterface"), "Cleaning up...");
+
+    if (comm_.connected()) {
+        comm_.disconnect();
+    }
+
+    RCLCPP_INFO(rclcpp::get_logger("ArduinoInterface"), "Successfully cleaned up.");
 
     return hardware_interface::CallbackReturn::SUCCESS;
 }
